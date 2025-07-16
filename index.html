@@ -127,6 +127,57 @@
       .sync-btn:hover {
         background: #45a049;
       }
+      .color-cell {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        min-width: 150px;
+      }
+      .color-info {
+        display: flex;
+        flex-direction: column;
+        line-height: 1.2;
+      }
+      .hex-value {
+        font-weight: bold;
+        font-size: 12px;
+      }
+      .hsl-value {
+        font-size: 11px;
+        color: #666;
+      }
+      .coord-cell {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        min-width: 60px;
+      }
+      .coord-cell input {
+        width: 50px;
+        margin: 0;
+      }
+      .sync-cell {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+      .sync-cell button {
+        padding: 2px 4px;
+        font-size: 10px;
+        width: 60px;
+      }
+      .sync-before {
+        background: #2196F3;
+      }
+      .sync-before:hover {
+        background: #1976D2;
+      }
+      .sync-after {
+        background: #FF9800;
+      }
+      .sync-after:hover {
+        background: #F57C00;
+      }
     </style>
   </head>
   <body>
@@ -171,18 +222,12 @@
         <thead>
           <tr>
             <th>#</th>
-            <th>Swatch Before</th>
-            <th>Hex Before</th>
-            <th>Swatch After</th>
-            <th>Hex After</th>
-            <th>HSL Before</th>
-            <th>HSL After</th>
+            <th>Color (Before)</th>
+            <th>Color (After)</th>
             <th>Preview Before</th>
             <th>Preview After</th>
-            <th>X Before</th>
-            <th>Y Before</th>
-            <th>X After</th>
-            <th>Y After</th>
+            <th>Coords Before</th>
+            <th>Coords After</th>
             <th>Sync</th>
             <th>Action</th>
           </tr>
@@ -334,6 +379,9 @@
           const svg = svgs[svgIndex];
           svg.setAttribute('width', width);
           svg.setAttribute('height', height);
+          
+          // Update dot positions after canvas resize
+          setTimeout(updateAllDotPositions, 50);
         }
       }
       function hex(r, g, b) {
@@ -382,9 +430,44 @@
         const tr = document.createElement("tr");
         tr.setAttribute('data-point-id', pointId);
         
-        // Create color swatches
-        const swatch1 = `<div class="color-swatch" style="background-color: ${hex1}"></div>`;
-        const swatch2 = `<div class="color-swatch" style="background-color: ${hex2}"></div>`;
+        // Create color cells with swatch and text
+        const colorCell1 = `
+          <div class="color-cell">
+            <div class="color-swatch" style="background-color: ${hex1}"></div>
+            <div class="color-info">
+              <div class="hex-value">${hex1}</div>
+              <div class="hsl-value">${hsl1}</div>
+            </div>
+          </div>
+        `;
+        
+        const colorCell2 = `
+          <div class="color-cell">
+            <div class="color-swatch" style="background-color: ${hex2}"></div>
+            <div class="color-info">
+              <div class="hex-value">${hex2}</div>
+              <div class="hsl-value">${hsl2}</div>
+            </div>
+          </div>
+        `;
+        
+        // Create coordinate cells
+        const coordCell1 = `
+          <div class="coord-cell">
+            <input type="number" class="coord-input" value="${Math.round(x1)}" onchange="updatePointCoord(${pointId}, 'x1', this.value)" placeholder="X">
+            <input type="number" class="coord-input" value="${Math.round(y1)}" onchange="updatePointCoord(${pointId}, 'y1', this.value)" placeholder="Y">
+          </div>
+        `;
+        
+        const coordCell2 = `
+          <div class="coord-cell">
+            <input type="number" class="coord-input" value="${Math.round(x2)}" onchange="updatePointCoord(${pointId}, 'x2', this.value)" placeholder="X">
+            <input type="number" class="coord-input" value="${Math.round(y2)}" onchange="updatePointCoord(${pointId}, 'y2', this.value)" placeholder="Y">
+          </div>
+        `;
+        
+        // Create sync buttons (will be conditionally shown)
+        const syncButtons = createSyncButtons(pointId, x1, y1, x2, y2);
         
         // Create preview canvases
         const preview1 = createPreviewCanvas(0, x1, y1);
@@ -393,26 +476,20 @@
         // Create cells with innerHTML for most content
         tr.innerHTML = `
           <td>${pointId}</td>
-          <td>${swatch1}</td>
-          <td>${hex1}</td>
-          <td>${swatch2}</td>
-          <td>${hex2}</td>
-          <td>${hsl1}</td>
-          <td>${hsl2}</td>
+          <td>${colorCell1}</td>
+          <td>${colorCell2}</td>
           <td></td>
           <td></td>
-          <td><input type="number" class="coord-input" value="${Math.round(x1)}" onchange="updatePointCoord(${pointId}, 'x1', this.value)"></td>
-          <td><input type="number" class="coord-input" value="${Math.round(y1)}" onchange="updatePointCoord(${pointId}, 'y1', this.value)"></td>
-          <td><input type="number" class="coord-input" value="${Math.round(x2)}" onchange="updatePointCoord(${pointId}, 'x2', this.value)"></td>
-          <td><input type="number" class="coord-input" value="${Math.round(y2)}" onchange="updatePointCoord(${pointId}, 'y2', this.value)"></td>
-          <td><button class="sync-btn" onclick="syncPoint(${pointId})">Sync</button></td>
+          <td>${coordCell1}</td>
+          <td>${coordCell2}</td>
+          <td><div class="sync-cell">${syncButtons}</div></td>
           <td><button class="remove-btn" onclick="removePoint(${pointId})">Remove</button></td>
         `;
         
         // Insert the actual canvas elements into the preview cells
         const cells = tr.getElementsByTagName('td');
-        cells[7].appendChild(preview1);
-        cells[8].appendChild(preview2);
+        cells[3].appendChild(preview1);
+        cells[4].appendChild(preview2);
         
         tbody.appendChild(tr);
         saveToStorage();
@@ -548,26 +625,47 @@
           const cells = row.getElementsByTagName('td');
           const hex1 = hex(c1[0], c1[1], c1[2]);
           const hex2 = hex(c2[0], c2[1], c2[2]);
+          const hsl1 = rgbToHsl(c1[0], c1[1], c1[2]);
+          const hsl2 = rgbToHsl(c2[0], c2[1], c2[2]);
           
-          // Update swatches
-          cells[1].innerHTML = `<div class="color-swatch" style="background-color: ${hex1}"></div>`;
-          cells[2].textContent = hex1;
-          cells[3].innerHTML = `<div class="color-swatch" style="background-color: ${hex2}"></div>`;
-          cells[4].textContent = hex2;
-          cells[5].textContent = rgbToHsl(c1[0], c1[1], c1[2]);
-          cells[6].textContent = rgbToHsl(c2[0], c2[1], c2[2]);
+          // Update color cells
+          cells[1].innerHTML = `
+            <div class="color-cell">
+              <div class="color-swatch" style="background-color: ${hex1}"></div>
+              <div class="color-info">
+                <div class="hex-value">${hex1}</div>
+                <div class="hsl-value">${hsl1}</div>
+              </div>
+            </div>
+          `;
+          
+          cells[2].innerHTML = `
+            <div class="color-cell">
+              <div class="color-swatch" style="background-color: ${hex2}"></div>
+              <div class="color-info">
+                <div class="hex-value">${hex2}</div>
+                <div class="hsl-value">${hsl2}</div>
+              </div>
+            </div>
+          `;
           
           // Update previews
-          cells[7].innerHTML = '';
-          cells[8].innerHTML = '';
-          cells[7].appendChild(createPreviewCanvas(0, point.x1, point.y1));
-          cells[8].appendChild(createPreviewCanvas(1, point.x2, point.y2));
+          cells[3].innerHTML = '';
+          cells[4].innerHTML = '';
+          cells[3].appendChild(createPreviewCanvas(0, point.x1, point.y1));
+          cells[4].appendChild(createPreviewCanvas(1, point.x2, point.y2));
           
           // Update coordinates
-          cells[9].querySelector('input').value = Math.round(point.x1);
-          cells[10].querySelector('input').value = Math.round(point.y1);
-          cells[11].querySelector('input').value = Math.round(point.x2);
-          cells[12].querySelector('input').value = Math.round(point.y2);
+          const coordInputs1 = cells[5].querySelectorAll('input');
+          const coordInputs2 = cells[6].querySelectorAll('input');
+          coordInputs1[0].value = Math.round(point.x1);
+          coordInputs1[1].value = Math.round(point.y1);
+          coordInputs2[0].value = Math.round(point.x2);
+          coordInputs2[1].value = Math.round(point.y2);
+          
+          // Update sync buttons
+          const syncButtons = createSyncButtons(point.id, point.x1, point.y1, point.x2, point.y2);
+          cells[7].innerHTML = `<div class="sync-cell">${syncButtons}</div>`;
         }
       }
       
@@ -742,7 +840,20 @@
         saveToStorage();
       }
       
-      function syncPoint(pointId) {
+      function createSyncButtons(pointId, x1, y1, x2, y2) {
+        const coordsMatch = (Math.round(x1) === Math.round(x2)) && (Math.round(y1) === Math.round(y2));
+        
+        if (coordsMatch) {
+          return ''; // No sync buttons if coordinates match
+        }
+        
+        return `
+          <button class="sync-btn sync-before" onclick="syncAfterToBefore(${pointId})" title="Sync After to Before">→</button>
+          <button class="sync-btn sync-after" onclick="syncBeforeToAfter(${pointId})" title="Sync Before to After">←</button>
+        `;
+      }
+      
+      function syncAfterToBefore(pointId) {
         const point = points.find(p => p.id === pointId);
         if (!point) return;
         
@@ -757,6 +868,32 @@
           const circle = dotGroup.querySelector('circle');
           const text = dotGroup.querySelector('text');
           const displayCoords = getDisplayCoordinates(canvases[1], point.x2, point.y2);
+          circle.setAttribute('cx', displayCoords.x);
+          circle.setAttribute('cy', displayCoords.y);
+          text.setAttribute('x', displayCoords.x);
+          text.setAttribute('y', displayCoords.y);
+        }
+        
+        // Update colors and previews
+        updatePointColors(point);
+        saveToStorage();
+      }
+      
+      function syncBeforeToAfter(pointId) {
+        const point = points.find(p => p.id === pointId);
+        if (!point) return;
+        
+        // Force before coords to match after coords
+        point.x1 = point.x2;
+        point.y1 = point.y2;
+        
+        // Update the SVG dot on the first canvas
+        const svg1 = svgs[0];
+        const dotGroup = svg1.querySelector(`g[data-point-id="${pointId}"]`);
+        if (dotGroup) {
+          const circle = dotGroup.querySelector('circle');
+          const text = dotGroup.querySelector('text');
+          const displayCoords = getDisplayCoordinates(canvases[0], point.x1, point.y1);
           circle.setAttribute('cx', displayCoords.x);
           circle.setAttribute('cy', displayCoords.y);
           text.setAttribute('x', displayCoords.x);
@@ -816,9 +953,43 @@
       // Add event listener for random sampling button
       document.getElementById('randomBtn').addEventListener('click', sampleRandomPoints);
       
+      // Function to update all SVG dot positions after resize
+      function updateAllDotPositions() {
+        points.forEach(point => {
+          // Update dots on both canvases
+          svgs.forEach((svg, svgIndex) => {
+            const dotGroup = svg.querySelector(`g[data-point-id="${point.id}"]`);
+            if (dotGroup) {
+              const circle = dotGroup.querySelector('circle');
+              const text = dotGroup.querySelector('text');
+              const canvas = canvases[svgIndex];
+              
+              // Get the appropriate coordinates for this canvas
+              const canvasX = svgIndex === 0 ? point.x1 : point.x2;
+              const canvasY = svgIndex === 0 ? point.y1 : point.y2;
+              
+              // Convert to display coordinates
+              const displayCoords = getDisplayCoordinates(canvas, canvasX, canvasY);
+              
+              // Update SVG elements
+              circle.setAttribute('cx', displayCoords.x);
+              circle.setAttribute('cy', displayCoords.y);
+              text.setAttribute('x', displayCoords.x);
+              text.setAttribute('y', displayCoords.y);
+            }
+          });
+        });
+      }
+      
       // Initialize from storage on page load
       window.addEventListener('load', () => {
         loadFromStorage();
+      });
+      
+      // Handle window resize to reposition SVG dots
+      window.addEventListener('resize', () => {
+        // Use a small delay to allow the DOM to update
+        setTimeout(updateAllDotPositions, 100);
       });
     </script>
   </body>
