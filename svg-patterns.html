@@ -1,0 +1,1233 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Grid • Shapes • Gradients • Noise — SVG Generator</title>
+    <style>
+      :root {
+        --bg: #0b0b12;
+        --panel: #12121c;
+        --ink: #e8e8f1;
+        --muted: #9aa0b0;
+        --accent: #68b5ff;
+        --accent-2: #ff9a55;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        height: 100%;
+      }
+      body {
+        margin: 0;
+        color: var(--ink);
+        background: var(--bg);
+        font: 14px/1.35 system-ui, -apple-system, Segoe UI, Roboto, Ubuntu,
+          Cantarell, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji",
+          "Segoe UI Emoji";
+        display: grid;
+        grid-template-rows: auto 1fr auto;
+        gap: 8px;
+      }
+      header,
+      footer {
+        padding: 10px 14px;
+        background: linear-gradient(180deg, #0f0f19, #0b0b12);
+        border-bottom: 1px solid #1c1d2b;
+      }
+      header h1 {
+        margin: 0;
+        font-size: 16px;
+        font-weight: 600;
+      }
+      main {
+        display: grid;
+        grid-template-columns: 340px 1fr;
+        gap: 12px;
+        padding: 12px;
+      }
+      @media (max-width: 1000px) {
+        main {
+          grid-template-columns: 1fr;
+        }
+      }
+      .panel {
+        background: var(--panel);
+        border: 1px solid #1f2130;
+        border-radius: 14px;
+        padding: 14px;
+        box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.02) inset,
+          0 10px 30px rgba(0, 0, 0, 0.25);
+      }
+      .controls {
+        display: grid;
+        gap: 10px;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+      }
+      .grid-3 {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+      }
+      .grid > label,
+      .grid-3 > label {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+      label span {
+        color: var(--muted);
+        font-size: 12px;
+      }
+      input[type="number"],
+      input[type="text"],
+      select,
+      textarea {
+        background: #0f1018;
+        color: var(--ink);
+        border: 1px solid #2a2c3b;
+        border-radius: 10px;
+        padding: 8px 10px;
+        outline: none;
+      }
+      input[type="range"] {
+        width: 100%;
+      }
+      textarea {
+        min-height: 110px;
+        resize: vertical;
+      }
+      .btn {
+        appearance: none;
+        border: 1px solid #2b2d3a;
+        background: #131422;
+        color: var(--ink);
+        padding: 10px 12px;
+        border-radius: 10px;
+        cursor: pointer;
+        font-weight: 600;
+      }
+      .btn:hover {
+        border-color: #3a3d50;
+      }
+      .btn.primary {
+        background: linear-gradient(180deg, #1a2638, #121a28);
+        border-color: #2b3d59;
+        color: #dfe9ff;
+      }
+      .btn.ghost {
+        background: #0f1018;
+      }
+      .row {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      .pill {
+        padding: 4px 8px;
+        border: 1px solid #2a2c3b;
+        border-radius: 999px;
+        cursor: pointer;
+        user-select: none;
+      }
+      .pill.active {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 1px rgba(104, 181, 255, 0.25) inset;
+      }
+      #stage-wrap {
+        display: grid;
+        align-items: center;
+        justify-items: center;
+      }
+      #stage {
+        width: 100%;
+        max-width: 1200px;
+        height: auto;
+        aspect-ratio: 16/9;
+        background: #0c0d16;
+        border-radius: 16px;
+        border: 1px solid #1a1c27;
+      }
+      .help {
+        color: var(--muted);
+        font-size: 12px;
+      }
+      details {
+        margin-top: 8px;
+      }
+      .chiprow {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+      }
+      .chip {
+        border: 1px dashed #33364a;
+        border-radius: 10px;
+        padding: 6px 8px;
+        font-size: 12px;
+      }
+      code.inline {
+        background: #0e1020;
+        padding: 2px 6px;
+        border-radius: 6px;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Grid + Shapes + Gradients + Noise (SVG) — Generator & Explorer</h1>
+    </header>
+
+    <main>
+      <section class="panel controls">
+        <div class="grid">
+          <label
+            ><span>Seed</span><input id="seed" type="text" value="oranges-1"
+          /></label>
+          <label
+            ><span>Auto-refresh</span>
+            <select id="autorefresh">
+              <option value="change" selected>On change</option>
+              <option value="manual">Manual</option>
+            </select>
+          </label>
+          <label
+            ><span>Width (px)</span
+            ><input id="w" type="number" value="1200" min="200" step="10"
+          /></label>
+          <label
+            ><span>Height (px)</span
+            ><input id="h" type="number" value="675" min="200" step="10"
+          /></label>
+        </div>
+
+        <div class="grid">
+          <label
+            ><span>Cols</span
+            ><input id="cols" type="number" value="12" min="1" max="64"
+          /></label>
+          <label
+            ><span>Rows</span
+            ><input id="rows" type="number" value="8" min="1" max="64"
+          /></label>
+          <label
+            ><span>Cell Pad</span
+            ><input id="pad" type="number" value="6" min="0" max="40"
+          /></label>
+          <label
+            ><span>Corner Radius</span
+            ><input id="r" type="number" value="22" min="0" max="120"
+          /></label>
+        </div>
+
+        <div class="grid">
+          <label
+            ><span>Palette</span>
+            <select id="palette"></select>
+          </label>
+          <label
+            ><span>Palette Strategy</span>
+            <select id="paletteStrategy">
+              <option value="fixed" selected>Fixed palette</option>
+              <option value="analogous">Analogous (HSL)</option>
+              <option value="triad">Triad (HSL)</option>
+              <option value="mono">Monochrome (HSL)</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="grid">
+          <label
+            ><span>Base Gradient</span>
+            <select id="gradKind">
+              <option>linear</option>
+              <option>radial</option>
+              <option selected>sweepish</option>
+            </select>
+          </label>
+          <label
+            ><span>Gradient Stops</span
+            ><input id="stops" type="number" value="6" min="2" max="12"
+          /></label>
+        </div>
+
+        <div class="grid">
+          <label
+            ><span>Noise (0–1)</span
+            ><input
+              id="noise"
+              type="range"
+              min="0"
+              max="1"
+              step="0.01"
+              value="0.25"
+          /></label>
+          <label
+            ><span>Noise Freq</span
+            ><input
+              id="freq"
+              type="range"
+              min="0.001"
+              max="0.2"
+              step="0.001"
+              value="0.035"
+          /></label>
+        </div>
+
+        <div class="grid">
+          <label
+            ><span>Pattern Overlay</span>
+            <select id="pattern">
+              <option value="none">None</option>
+              <option value="arcs" selected>Concentric Arcs</option>
+              <option value="quarters">Quarter-Circles Grid</option>
+              <option value="circles">Circles Grid</option>
+              <option value="bands">Curved Bands</option>
+            </select>
+          </label>
+          <label
+            ><span>Pattern Opacity</span
+            ><input
+              id="patOp"
+              type="range"
+              min="0"
+              max="1"
+              step="0.01"
+              value="0.65"
+          /></label>
+        </div>
+
+        <div class="grid-3">
+          <label
+            ><span>Grid Overlay</span>
+            <select id="gridOverlay">
+              <option value="none">None</option>
+              <option value="soft" selected>Soft squares</option>
+              <option value="hard">Hard squares</option>
+              <option value="checker">Checker</option>
+            </select>
+          </label>
+          <label
+            ><span>Grid Opacity</span
+            ><input
+              id="gridOpacity"
+              type="range"
+              min="0"
+              max="1"
+              step="0.01"
+              value="0.25"
+          /></label>
+          <label
+            ><span>Hotspot</span>
+            <select id="hotspot">
+              <option>none</option>
+              <option selected>corner</option>
+              <option>center</option>
+              <option>edge</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="row">
+          <button id="btnRandomize" class="btn">🎲 Randomize</button>
+          <button id="btnShuffle" class="btn ghost">🎨 Shuffle Palette</button>
+          <button id="btnRender" class="btn primary">⚡ Render</button>
+        </div>
+
+        <div class="row">
+          <button id="btnCopySVG" class="btn">📋 Copy SVG</button>
+          <button id="btnDownloadSVG" class="btn">⬇️ Download SVG</button>
+          <button id="btnCopyConfig" class="btn ghost">📋 Copy Config</button>
+          <button id="btnShare" class="btn ghost">🔗 Share URL</button>
+        </div>
+
+        <label
+          ><span>Current Config (live)</span>
+          <textarea id="configOut" spellcheck="false"></textarea>
+        </label>
+
+        <details>
+          <summary>Ideas to extend visuals (click)</summary>
+          <ul>
+            <li>
+              Voronoi or Lloyd-relaxed point cells (clipPaths), with gradient
+              fills per cell.
+            </li>
+            <li>
+              Superellipse / squircle tiles (<code class="inline"
+                >(|x/a|^n + |y/b|^n = 1)</code
+              >) for softer grids.
+            </li>
+            <li>
+              Isometric diamonds and axial skew with alternating z-index
+              illusions.
+            </li>
+            <li>
+              Halftone + ordered dithering overlays using
+              <code class="inline">&lt;pattern&gt;</code>.
+            </li>
+            <li>
+              Hue-field driven by Perlin/Turbulence baked into
+              <code class="inline">feColorMatrix</code> for chroma drift.
+            </li>
+            <li>
+              SVG blend modes (<code class="inline">mix-blend-mode</code>) for
+              multiply/screen banding on modern browsers.
+            </li>
+            <li>
+              Stroke-only optical patterns: moiré lines, concentric dash arrays
+              with <code class="inline">pathLength</code>.
+            </li>
+            <li>
+              Animated gradients + noise phase for subtle shimmer
+              (prefers-reduced-motion aware).
+            </li>
+            <li>
+              Shape grammars: per-cell glyph set (quarter, half, full circle;
+              bars; triangles) with Markov chains.
+            </li>
+            <li>
+              Parametric palettes (OKLCH ramps) with constant perceived
+              lightness.
+            </li>
+          </ul>
+        </details>
+
+        <div class="help">
+          Tip: everything is deterministic per <em>Seed</em>. Share links encode
+          config in the URL hash.
+        </div>
+      </section>
+
+      <section id="stage-wrap" class="panel">
+        <svg
+          id="stage"
+          xmlns="http://www.w3.org/2000/svg"
+          xmlns:xlink="http://www.w3.org/1999/xlink"
+          role="img"
+          aria-label="Generated artwork"
+        ></svg>
+      </section>
+    </main>
+
+    <footer class="help">
+      Built with pure SVG: gradients, clipPaths, turbulence noise, and a few
+      pattern renderers.
+    </footer>
+
+    <script>
+      /* =========================
+   Utilities & PRNG (seeded)
+   ========================= */
+      function cLog(msg, data) {
+        console.log("[SVGGen]", msg, data || "");
+      }
+
+      function hashStr(str) {
+        // xfnv1a 32-bit
+        let h = 0x811c9dc5;
+        for (let i = 0; i < str.length; i++) {
+          h ^= str.charCodeAt(i);
+          h = Math.imul(h, 0x01000193);
+        }
+        return h >>> 0;
+      }
+      function mulberry32(a) {
+        return function () {
+          let t = (a += 0x6d2b79f5);
+          t = Math.imul(t ^ (t >>> 15), t | 1);
+          t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+          return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+        };
+      }
+      // sample helpers
+      const randInt = (rng, min, max) =>
+        Math.floor(rng() * (max - min + 1)) + min;
+      const choice = (rng, arr) => arr[Math.floor(rng() * arr.length)];
+      const lerp = (a, b, t) => a + (b - a) * t;
+
+      // HSL/Hex helpers
+      function hsl(h, s, l) {
+        return `hsl(${h % 360} ${s}% ${l}%)`;
+      }
+      function hexToHSL(hex) {
+        hex = hex.replace("#", "");
+        if (hex.length === 3)
+          hex = hex
+            .split("")
+            .map((x) => x + x)
+            .join("");
+        const r = parseInt(hex.substr(0, 2), 16) / 255;
+        const g = parseInt(hex.substr(2, 2), 16) / 255;
+        const b = parseInt(hex.substr(4, 2), 16) / 255;
+        const max = Math.max(r, g, b),
+          min = Math.min(r, g, b);
+        let h,
+          s,
+          l = (max + min) / 2;
+        if (max === min) {
+          h = s = 0;
+        } else {
+          const d = max - min;
+          s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+          switch (max) {
+            case r:
+              h = (g - b) / d + (g < b ? 6 : 0);
+              break;
+            case g:
+              h = (b - r) / d + 2;
+              break;
+            case b:
+              h = (r - g) / d + 4;
+              break;
+          }
+          h *= 60;
+        }
+        return { h, s: Math.round(s * 100), l: Math.round(l * 100) };
+      }
+
+      /* =========================
+   Palettes
+   ========================= */
+      const PALETTES = {
+        "Warm Sunset": ["#FFD29D", "#FFB36D", "#FF8A3D", "#FF5A36", "#E7352A"],
+        "Cool Blue": ["#C7E8FF", "#8DD2FF", "#56B6FF", "#2E8CFF", "#1B4DFF"],
+        "Royal Purple": ["#D9C8FF", "#B79CFF", "#8A6FFF", "#6047D9", "#3B2E8C"],
+        "Citrus Pop": ["#FFF4C1", "#FFE16B", "#FFC300", "#FF8C00", "#FF3B3B"],
+        "Teal Ocean": ["#CEFFF7", "#8BF4E6", "#4DD9D0", "#22A7B3", "#0C6C7C"],
+        "Rose Sky": ["#FFE3F0", "#FFC0DA", "#FF95C0", "#F060A6", "#C53F8D"],
+      };
+
+      // Populate palette picker
+      const paletteSel = document.querySelector("#palette");
+      for (const k of Object.keys(PALETTES)) {
+        const opt = document.createElement("option");
+        opt.value = k;
+        opt.textContent = k;
+        if (k === "Warm Sunset") opt.selected = true;
+        paletteSel.appendChild(opt);
+      }
+
+      /* =========================
+   Config management
+   ========================= */
+      function currentConfig() {
+        return {
+          seed: document.querySelector("#seed").value.trim(),
+          size: { w: +w.value, h: +h.value },
+          grid: {
+            cols: +cols.value,
+            rows: +rows.value,
+            pad: +pad.value,
+            radius: +r.value,
+          },
+          paletteKind: document.querySelector("#palette").value,
+          paletteStrategy: document.querySelector("#paletteStrategy").value,
+          gradient: { kind: gradKind.value, stops: +stops.value },
+          noise: { opacity: +noise.value, freq: +freq.value },
+          overlay: {
+            grid: gridOverlay.value,
+            gridOpacity: +gridOpacity.value,
+            hotspot: hotspot.value,
+          },
+          pattern: { kind: pattern.value, opacity: +patOp.value },
+        };
+      }
+      function setConfig(cfg) {
+        seed.value = cfg.seed;
+        w.value = cfg.size.w;
+        h.value = cfg.size.h;
+        cols.value = cfg.grid.cols;
+        rows.value = cfg.grid.rows;
+        pad.value = cfg.grid.pad;
+        r.value = cfg.grid.radius;
+        palette.value = cfg.paletteKind;
+        paletteStrategy.value = cfg.paletteStrategy;
+        gradKind.value = cfg.gradient.kind;
+        stops.value = cfg.gradient.stops;
+        noise.value = cfg.noise.opacity;
+        freq.value = cfg.noise.freq;
+        gridOverlay.value = cfg.overlay.grid;
+        gridOpacity.value = cfg.overlay.gridOpacity;
+        hotspot.value = cfg.overlay.hotspot;
+        pattern.value = cfg.pattern.kind;
+        patOp.value = cfg.pattern.opacity;
+        updateConfigOut();
+      }
+      function updateConfigOut() {
+        configOut.value = JSON.stringify(currentConfig(), null, 2);
+      }
+
+      /* =========================
+   Palette strategies
+   ========================= */
+      function derivePalette(rng, base, strategy) {
+        if (strategy === "fixed") return base.slice();
+        const hslBase = hexToHSL(choice(rng, base));
+        const out = [];
+        const n = 5;
+        if (strategy === "analogous") {
+          const step = 18 + rng() * 8;
+          for (let i = -2; i <= 2; i++) {
+            out.push(
+              hsl(
+                hslBase.h + i * step,
+                55 + randInt(rng, 20, 35),
+                45 + randInt(rng, -10, 15)
+              )
+            );
+          }
+        } else if (strategy === "triad") {
+          const roots = [0, 120, 240];
+          for (const r of roots) {
+            const h = hslBase.h + r + randInt(rng, -10, 10);
+            out.push(
+              hsl(h, 65 + randInt(rng, 10, 20), 50 + randInt(rng, -10, 10))
+            );
+          }
+          // extend
+          out.push(hsl(hslBase.h + 60, 70, 55));
+          out.push(hsl(hslBase.h + 180, 70, 45));
+        } else if (strategy === "mono") {
+          const baseL = hslBase.l;
+          for (let i = 0; i < n; i++) {
+            const l = Math.max(
+              10,
+              Math.min(90, baseL + (i - 2) * 10 + randInt(rng, -4, 4))
+            );
+            out.push(
+              hsl(
+                hslBase.h,
+                Math.max(20, hslBase.s - 10 + randInt(rng, -5, 5)),
+                l
+              )
+            );
+          }
+        }
+        return out;
+      }
+
+      /* =========================
+   SVG building
+   ========================= */
+      function el(ns, name, attrs = {}, children = []) {
+        const e = document.createElementNS(ns, name);
+        for (const [k, v] of Object.entries(attrs)) {
+          if (v == null) continue;
+          e.setAttribute(k, String(v));
+        }
+        for (const c of children) e.appendChild(c);
+        return e;
+      }
+      const SVGNS = "http://www.w3.org/2000/svg";
+      function clearNode(node) {
+        while (node.firstChild) node.removeChild(node.firstChild);
+      }
+
+      /* =========================
+   Gradient builders
+   ========================= */
+      function buildGradient(defs, id, kind, colors, rng) {
+        if (kind === "linear") {
+          const g = el(SVGNS, "linearGradient", {
+            id,
+            x1: "0%",
+            y1: "0%",
+            x2: "100%",
+            y2: "0%",
+          });
+          g.setAttribute(
+            "gradientTransform",
+            `rotate(${Math.floor(rng() * 360)})`
+          );
+          addStops(g, colors, rng);
+          defs.appendChild(g);
+          return `url(#${id})`;
+        }
+        if (kind === "radial") {
+          const g = el(SVGNS, "radialGradient", {
+            id,
+            cx: `${randInt(rng, 20, 80)}%`,
+            cy: `${randInt(rng, 20, 80)}%`,
+            r: `${randInt(rng, 60, 90)}%`,
+          });
+          addStops(g, colors, rng);
+          defs.appendChild(g);
+          return `url(#${id})`;
+        }
+        // sweepish (simulate conic with many linear stops in a radial gradient)
+        const g = el(SVGNS, "radialGradient", {
+          id,
+          cx: `50%`,
+          cy: `50%`,
+          r: `80%`,
+        });
+        addStops(g, colors, rng, true);
+        defs.appendChild(g);
+        return `url(#${id})`;
+
+        function addStops(grad, cols, rng, jitter = false) {
+          const n = +stops.value || cols.length;
+          for (let i = 0; i < n; i++) {
+            const t = i / (n - 1);
+            const col =
+              cols[Math.floor(t * (cols.length - 1))] || choice(rng, cols);
+            const off = jitter
+              ? Math.min(1, Math.max(0, t + (rng() - 0.5) * 0.06))
+              : t;
+            grad.appendChild(
+              el(SVGNS, "stop", { offset: off, "stop-color": col })
+            );
+          }
+        }
+      }
+
+      /* =========================
+   Noise filter
+   ========================= */
+      function ensureNoise(defs, id, freq) {
+        const f = el(SVGNS, "filter", {
+          id,
+          x: "-20%",
+          y: "-20%",
+          width: "140%",
+          height: "140%",
+        });
+        const turb = el(SVGNS, "feTurbulence", {
+          type: "fractalNoise",
+          baseFrequency: freq,
+          numOctaves: 2,
+          seed: randInt(Math.random, 1, 10), // not seeded; visual variety okay here
+        });
+        const color = el(SVGNS, "feColorMatrix", {
+          type: "saturate",
+          values: "0",
+        });
+        const comp = el(SVGNS, "feComposite", {
+          operator: "arithmetic",
+          k1: "0",
+          k2: "1",
+          k3: "0",
+          k4: "0",
+        });
+        f.appendChild(turb);
+        f.appendChild(color);
+        f.appendChild(comp);
+        defs.appendChild(f);
+        return `url(#${id})`;
+      }
+
+      /* =========================
+   Renderers
+   ========================= */
+      const renderers = {
+        base({ svg, defs, cfg, rng }) {
+          const { w, h } = cfg.size;
+          const pal = derivePalette(
+            rng,
+            PALETTES[cfg.paletteKind],
+            cfg.paletteStrategy
+          );
+          const gradFill = buildGradient(
+            defs,
+            "gradBase",
+            cfg.gradient.kind,
+            pal,
+            rng
+          );
+
+          // rounded clip
+          const clip = el(SVGNS, "clipPath", { id: "clipR" });
+          clip.appendChild(
+            el(SVGNS, "rect", {
+              x: 0,
+              y: 0,
+              width: w,
+              height: h,
+              rx: cfg.grid.radius,
+              ry: cfg.grid.radius,
+            })
+          );
+          defs.appendChild(clip);
+
+          // Background
+          svg.appendChild(
+            el(SVGNS, "rect", {
+              x: 0,
+              y: 0,
+              width: w,
+              height: h,
+              fill: gradFill,
+              rx: cfg.grid.radius,
+              ry: cfg.grid.radius,
+            })
+          );
+
+          // Optional hotspot
+          if (cfg.overlay.hotspot !== "none") {
+            const gId = "gradHot";
+            const hotG = el(SVGNS, "radialGradient", { id: gId });
+            const c = choice(rng, pal);
+            const where = (() => {
+              switch (cfg.overlay.hotspot) {
+                case "center":
+                  return { cx: "50%", cy: "50%" };
+                case "edge":
+                  return {
+                    cx: `${randInt(rng, 10, 90)}%`,
+                    cy: rng() < 0.5 ? "5%" : "95%",
+                  };
+                default:
+                  return { cx: "85%", cy: "85%" };
+              }
+            })();
+            hotG.setAttribute("cx", where.cx);
+            hotG.setAttribute("cy", where.cy);
+            hotG.setAttribute("r", "65%");
+            hotG.appendChild(
+              el(SVGNS, "stop", {
+                offset: "0%",
+                "stop-color": c,
+                "stop-opacity": 0.8,
+              })
+            );
+            hotG.appendChild(
+              el(SVGNS, "stop", {
+                offset: "100%",
+                "stop-color": c,
+                "stop-opacity": 0,
+              })
+            );
+            defs.appendChild(hotG);
+            svg.appendChild(
+              el(SVGNS, "rect", {
+                x: 0,
+                y: 0,
+                width: w,
+                height: h,
+                fill: `url(#${gId})`,
+                "clip-path": "url(#clipR)",
+              })
+            );
+          }
+
+          return { palette: pal };
+        },
+
+        gridOverlay({ svg, cfg, rng }) {
+          const { w, h } = cfg.size;
+          const { rows, cols, pad } = cfg.grid;
+          const cellW = w / cols,
+            cellH = h / rows;
+
+          const g = el(SVGNS, "g", {
+            "clip-path": "url(#clipR)",
+            opacity: cfg.overlay.gridOpacity,
+          });
+          for (let r = 0; r < rows; r++) {
+            for (let c = 0; c < cols; c++) {
+              const x = c * cellW + pad / 2,
+                y = r * cellH + pad / 2;
+              const ww = cellW - pad,
+                hh = cellH - pad;
+              let fill = "rgba(255,255,255,0.1)";
+              if (cfg.overlay.grid === "soft") {
+                fill = `rgba(255,255,255,${
+                  0.08 + ((r + c) / (rows + cols)) * 0.06
+                })`;
+              } else if (cfg.overlay.grid === "hard") {
+                fill = `rgba(0,0,0,${0.18 + rng() * 0.15})`;
+              } else if (cfg.overlay.grid === "checker") {
+                const on = (r + c) % 2 === 0;
+                fill = on ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.14)";
+              } else continue;
+              g.appendChild(
+                el(SVGNS, "rect", {
+                  x,
+                  y,
+                  width: ww,
+                  height: hh,
+                  rx: 8,
+                  ry: 8,
+                  fill,
+                })
+              );
+            }
+          }
+          svg.appendChild(g);
+        },
+
+        pattern_arcs({ svg, cfg, rng, palette }) {
+          const { w, h } = cfg.size;
+          const g = el(SVGNS, "g", {
+            opacity: cfg.pattern.opacity,
+            "clip-path": "url(#clipR)",
+          });
+          const cx = lerp(w * 0.2, w * 0.85, rng());
+          const cy = lerp(h * 0.2, h * 0.85, rng());
+          const maxR = Math.hypot(Math.max(cx, w - cx), Math.max(cy, h - cy));
+          const bands = randInt(rng, 6, 14);
+          for (let i = 0; i < bands; i++) {
+            const t = i / (bands - 1);
+            const r = lerp(40, maxR, t * t);
+            const path = arcPath(cx, cy, r, -90, 270); // big circle arc
+            const col = palette[i % palette.length];
+            const sw = Math.max(6, Math.round((maxR / bands) * 0.5));
+            g.appendChild(
+              el(SVGNS, "path", {
+                d: path,
+                fill: "none",
+                stroke: col,
+                "stroke-width": sw,
+                "stroke-linecap": "round",
+                "stroke-opacity": 0.9,
+              })
+            );
+          }
+          svg.appendChild(g);
+
+          function arcPath(cx, cy, r, a0, a1) {
+            const p0 = polar(cx, cy, r, a0),
+              p1 = polar(cx, cy, r, a1);
+            const large = Math.abs(a1 - a0) % 360 > 180 ? 1 : 0;
+            const sweep = a1 > a0 ? 1 : 0;
+            return `M ${p0.x} ${p0.y} A ${r} ${r} 0 ${large} ${sweep} ${p1.x} ${p1.y}`;
+          }
+          function polar(cx, cy, r, deg) {
+            const t = (deg * Math.PI) / 180;
+            return { x: cx + Math.cos(t) * r, y: cy + Math.sin(t) * r };
+          }
+        },
+
+        pattern_quarters({ svg, cfg, rng, palette }) {
+          const { w, h } = cfg.size;
+          const { rows, cols, pad } = cfg.grid;
+          const cellW = w / cols,
+            cellH = h / rows;
+          const g = el(SVGNS, "g", {
+            opacity: cfg.pattern.opacity,
+            "clip-path": "url(#clipR)",
+          });
+          for (let r = 0; r < rows; r++) {
+            for (let c = 0; c < cols; c++) {
+              const x = c * cellW + pad / 2,
+                y = r * cellH + pad / 2;
+              const ww = cellW - pad,
+                hh = cellH - pad;
+              const rad = Math.min(ww, hh);
+              const corner = randInt(rng, 0, 3);
+              const d = quarterPath(x, y, ww, hh, corner, rad);
+              const col = palette[(r + c) % palette.length];
+              g.appendChild(
+                el(SVGNS, "path", { d, fill: col, "fill-opacity": 0.9 })
+              );
+            }
+          }
+          svg.appendChild(g);
+
+          function quarterPath(x, y, w, h, corner, rad) {
+            const rx = x + (corner % 2 ? w : 0);
+            const ry = y + (corner >= 2 ? h : 0);
+            const sx = x + (corner % 2 ? w : 0);
+            const sy = y + (corner >= 2 ? h : 0);
+            const ex = x + (corner % 2 ? 0 : w);
+            const ey = y + (corner >= 2 ? 0 : h);
+            return `M ${sx} ${sy} A ${rad} ${rad} 0 0 ${
+              corner % 2 ? 0 : 1
+            } ${ex} ${ey} L ${rx} ${ry} Z`;
+          }
+        },
+
+        pattern_circles({ svg, cfg, rng, palette }) {
+          const { w, h } = cfg.size;
+          const { rows, cols, pad } = cfg.grid;
+          const cellW = w / cols,
+            cellH = h / rows;
+          const g = el(SVGNS, "g", {
+            opacity: cfg.pattern.opacity,
+            "clip-path": "url(#clipR)",
+          });
+          for (let r = 0; r < rows; r++) {
+            for (let c = 0; c < cols; c++) {
+              const x = c * cellW + pad / 2,
+                y = r * cellH + pad / 2;
+              const cx = x + cellW / 2 - pad / 2 + (rng() - 0.5) * cellW * 0.2;
+              const cy = y + cellH / 2 - pad / 2 + (rng() - 0.5) * cellH * 0.2;
+              const rad = Math.min(cellW, cellH) * (0.15 + rng() * 0.45);
+              const fill = palette[(r * 7 + c * 5) % palette.length];
+              g.appendChild(
+                el(SVGNS, "circle", {
+                  cx,
+                  cy,
+                  r: rad,
+                  fill,
+                  "fill-opacity": 0.9,
+                })
+              );
+            }
+          }
+          svg.appendChild(g);
+        },
+
+        pattern_bands({ svg, cfg, rng, palette }) {
+          const { w, h } = cfg.size;
+          const g = el(SVGNS, "g", {
+            opacity: cfg.pattern.opacity,
+            "clip-path": "url(#clipR)",
+          });
+          const bands = randInt(rng, 5, 12);
+          const sw = Math.max(14, Math.floor((w / bands) * 0.75));
+          const cx = w * (0.3 + rng() * 0.6);
+          const r0 = Math.max(w, h) * (0.5 + rng() * 0.4);
+          for (let i = 0; i < bands; i++) {
+            const r = r0 + i * sw * 0.9;
+            const col = palette[(i * 2) % palette.length];
+            const d = `M ${-100} ${h + 100} A ${r} ${r} 0 0 1 ${w + 100} ${
+              h + 100
+            }`;
+            g.appendChild(
+              el(SVGNS, "path", {
+                d,
+                fill: "none",
+                stroke: col,
+                "stroke-width": sw,
+                transform: `translate(${cx - w / 2},0)`,
+              })
+            );
+          }
+          svg.appendChild(g);
+        },
+      };
+
+      /* =========================
+   Main render function
+   ========================= */
+      function render(cfg) {
+        cLog("render() cfg", cfg);
+        const svg = document.querySelector("#stage");
+        svg.setAttribute("viewBox", `0 0 ${cfg.size.w} ${cfg.size.h}`);
+        svg.setAttribute("width", cfg.size.w);
+        svg.setAttribute("height", cfg.size.h);
+        clearNode(svg);
+
+        // defs
+        const defs = el(SVGNS, "defs");
+        svg.appendChild(defs);
+
+        // determinism
+        const rng = mulberry32(hashStr(cfg.seed));
+
+        // base gradient/background
+        const { palette } = renderers.base({ svg, defs, cfg, rng });
+
+        // overlays
+        renderers.gridOverlay({ svg, cfg, rng });
+
+        // pattern layer
+        const kind = cfg.pattern.kind;
+        if (kind !== "none") {
+          const fn = {
+            arcs: "pattern_arcs",
+            quarters: "pattern_quarters",
+            circles: "pattern_circles",
+            bands: "pattern_bands",
+          }[kind];
+          renderers[fn]({ svg, cfg, rng, palette });
+        }
+
+        // noise overlay rect
+        if (cfg.noise.opacity > 0) {
+          const fId = "noiseF";
+          ensureNoise(defs, fId, cfg.noise.freq);
+          const nRect = el(SVGNS, "rect", {
+            x: -cfg.size.w * 0.1,
+            y: -cfg.size.h * 0.1,
+            width: cfg.size.w * 1.2,
+            height: cfg.size.h * 1.2,
+            filter: `url(#${fId})`,
+            opacity: cfg.noise.opacity,
+            "clip-path": "url(#clipR)",
+          });
+          svg.appendChild(nRect);
+        }
+
+        updateConfigOut();
+      }
+
+      /* =========================
+   Export / Share helpers
+   ========================= */
+      function svgToText() {
+        const svg = document.querySelector("#stage");
+        const pre = `<?xml version="1.0" encoding="UTF-8"?>\n`;
+        const s = new XMLSerializer().serializeToString(svg);
+        return pre + s;
+      }
+      async function copyText(text) {
+        await navigator.clipboard.writeText(text);
+      }
+      function download(name, text) {
+        const blob = new Blob([text], { type: "image/svg+xml" });
+        const a = Object.assign(document.createElement("a"), {
+          download: name,
+          href: URL.createObjectURL(blob),
+        });
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+      }
+      function encodeShare(cfg) {
+        return btoa(unescape(encodeURIComponent(JSON.stringify(cfg))));
+      }
+      function decodeShare(hash) {
+        try {
+          return JSON.parse(decodeURIComponent(escape(atob(hash))));
+        } catch (e) {
+          return null;
+        }
+      }
+
+      /* =========================
+   Wire up UI
+   ========================= */
+      const formEls = Array.from(
+        document.querySelectorAll(
+          "#seed,#w,#h,#cols,#rows,#pad,#r,#palette,#paletteStrategy,#gradKind,#stops,#noise,#freq,#gridOverlay,#gridOpacity,#hotspot,#pattern,#patOp,#autorefresh"
+        )
+      );
+
+      function maybeRender() {
+        if (autorefresh.value === "change") render(currentConfig());
+      }
+      formEls.forEach((el) => el.addEventListener("input", maybeRender));
+      formEls.forEach((el) => el.addEventListener("change", maybeRender));
+
+      btnRandomize.addEventListener("click", (e) => {
+        e.preventDefault();
+
+        // seed
+        seed.value = "seed-" + Math.random().toString(36).slice(2, 8);
+
+        // size
+        w.value = randInt(Math.random, 400, 1600);
+        h.value = randInt(Math.random, 300, 1200);
+
+        // grid
+        cols.value = randInt(Math.random, 3, 32);
+        rows.value = randInt(Math.random, 3, 32);
+        pad.value = randInt(Math.random, 0, 24);
+        r.value = randInt(Math.random, 0, 80);
+
+        // palette
+        palette.value = choice(Math.random, Object.keys(PALETTES));
+        paletteStrategy.value = choice(Math.random, [
+          "fixed",
+          "analogous",
+          "triad",
+          "mono",
+        ]);
+
+        // gradient
+        gradKind.value = choice(Math.random, ["linear", "radial", "sweepish"]);
+        stops.value = randInt(Math.random, 2, 10);
+
+        // noise
+        noise.value = Math.random().toFixed(2);
+        freq.value = (0.005 + Math.random() * 0.15).toFixed(3);
+
+        // overlays
+        gridOverlay.value = choice(Math.random, [
+          "none",
+          "soft",
+          "hard",
+          "checker",
+        ]);
+        gridOpacity.value = Math.random().toFixed(2);
+        hotspot.value = choice(Math.random, [
+          "none",
+          "corner",
+          "center",
+          "edge",
+        ]);
+
+        // patterns
+        pattern.value = choice(Math.random, [
+          "none",
+          "arcs",
+          "quarters",
+          "circles",
+          "bands",
+        ]);
+        patOp.value = Math.random().toFixed(2);
+
+        maybeRender();
+      });
+
+      btnShuffle.addEventListener("click", (e) => {
+        e.preventDefault();
+        palette.value = choice(Math.random, Object.keys(PALETTES));
+        paletteStrategy.value = choice(Math.random, [
+          "fixed",
+          "analogous",
+          "triad",
+          "mono",
+        ]);
+        maybeRender();
+      });
+
+      btnRender.addEventListener("click", (e) => {
+        e.preventDefault();
+        render(currentConfig());
+      });
+
+      btnCopySVG.addEventListener("click", async (e) => {
+        e.preventDefault();
+        await copyText(svgToText());
+        btnCopySVG.textContent = "✔ Copied SVG";
+        setTimeout(() => (btnCopySVG.textContent = "📋 Copy SVG"), 900);
+      });
+
+      btnCopyConfig.addEventListener("click", async (e) => {
+        e.preventDefault();
+        await copyText(JSON.stringify(currentConfig(), null, 2));
+        btnCopyConfig.textContent = "✔ Copied Config";
+        setTimeout(() => (btnCopyConfig.textContent = "📋 Copy Config"), 900);
+      });
+
+      btnDownloadSVG.addEventListener("click", (e) => {
+        e.preventDefault();
+        const cfg = currentConfig();
+        download(`art-${cfg.seed}.svg`, svgToText());
+      });
+
+      btnShare.addEventListener("click", async (e) => {
+        e.preventDefault();
+        const hash = encodeShare(currentConfig());
+        const url = location.origin + location.pathname + "#" + hash;
+        await copyText(url);
+        history.replaceState(null, "", "#" + hash);
+        btnShare.textContent = "✔ Link Copied";
+        setTimeout(() => (btnShare.textContent = "🔗 Share URL"), 900);
+      });
+
+      // Load from URL hash if present
+      (function boot() {
+        cLog("boot()");
+        if (location.hash.length > 1) {
+          const cfg = decodeShare(location.hash.slice(1));
+          if (cfg) {
+            setConfig(cfg);
+          }
+        }
+        render(currentConfig());
+      })();
+    </script>
+  </body>
+</html>
