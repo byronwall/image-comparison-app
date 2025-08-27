@@ -274,10 +274,25 @@
               id="freq"
               type="range"
               min="0.001"
-              max="0.2"
+              max="2"
               step="0.001"
-              value="0.035"
+              value="0.85"
           /></label>
+        </div>
+
+        <div class="grid">
+          <label
+            ><span>Noise Kind</span>
+            <select id="noiseKind">
+              <option value="fractal-fine" selected>
+                Fractal Fine (grain)
+              </option>
+              <option value="fractal-soft">Fractal Soft (mist)</option>
+              <option value="paper-fiber">Paper Fiber</option>
+              <option value="stipple">Blue-ish Stipple</option>
+              <option value="film-dust">Film Dust</option>
+            </select>
+          </label>
         </div>
 
         <div class="grid">
@@ -531,6 +546,8 @@
           paletteStrategy: document.querySelector("#paletteStrategy").value,
           gradient: { kind: gradKind.value, stops: +stops.value },
           noise: { opacity: +noise.value, freq: +freq.value },
+          noiseKind:
+            document.querySelector("#noiseKind")?.value || "fractal-fine",
           overlay: {
             grid: gridOverlay.value,
             gridOpacity: +gridOpacity.value,
@@ -691,36 +708,151 @@
       /* =========================
    Noise filter
    ========================= */
-      function ensureNoise(defs, id, freq) {
+
+      // --- New: Multi-model SVG noise layer ---
+      function addNoiseLayer({ defs, svg, cfg, rng }) {
+        const id = "noiseF";
+        const kind =
+          document.querySelector("#noiseKind")?.value || "fractal-fine";
+        const { w, h } = cfg.size;
+
+        // Build filter or pattern depending on kind
+        if (kind === "stipple") {
+          // deterministic point pattern (tiny dots)
+          const patId = "stipplePat";
+          const pat = el(SVGNS, "pattern", {
+            id: patId,
+            patternUnits: "userSpaceOnUse",
+            width: 3,
+            height: 3,
+          });
+          // sprinkle ~6 tiny dots in a 3x3 tile (seeded)
+          const r2 = mulberry32(hashStr(cfg.seed) ^ 0xa5a5);
+          for (let i = 0; i < 6; i++) {
+            const cx = (r2() * 3).toFixed(3);
+            const cy = (r2() * 3).toFixed(3);
+            const rr = (0.25 + r2() * 0.35).toFixed(3);
+            pat.appendChild(
+              el(SVGNS, "circle", {
+                cx,
+                cy,
+                r: rr,
+                fill: "black",
+                opacity: 0.45,
+              })
+            );
+          }
+          defs.appendChild(pat);
+          svg.appendChild(
+            el(SVGNS, "rect", {
+              x: 0,
+              y: 0,
+              width: w,
+              height: h,
+              fill: `url(#${patId})`,
+              opacity: cfg.noise.opacity,
+            })
+          );
+          return;
+        }
+
+        // Filter-based grains
         const f = el(SVGNS, "filter", {
           id,
-          x: "-20%",
-          y: "-20%",
-          width: "140%",
-          height: "140%",
+          x: "-10%",
+          y: "-10%",
+          width: "120%",
+          height: "120%",
+          filterUnits: "objectBoundingBox",
         });
+        let baseFreq = +freq.value || 0.85; // UI slider drives it
+        let oct = 1;
+        let turbType = "fractalNoise";
+
+        if (kind === "fractal-fine") {
+          turbType = "fractalNoise";
+          // very small, crispy grain (higher baseFrequency is smaller grain)
+          baseFreq = Math.max(0.4, baseFreq);
+          oct = 1;
+        } else if (kind === "fractal-soft") {
+          turbType = "fractalNoise";
+          baseFreq = Math.min(0.2, Math.max(0.02, baseFreq * 0.15));
+          oct = 3;
+        } else if (kind === "paper-fiber") {
+          turbType = "turbulence";
+          baseFreq = 0.02 + rng() * 0.02; // directional fibers
+          oct = 2;
+        } else if (kind === "film-dust") {
+          turbType = "fractalNoise";
+          baseFreq = Math.max(0.6, baseFreq);
+          oct = 1;
+        }
+
+        // turbulence
         const turb = el(SVGNS, "feTurbulence", {
-          type: "fractalNoise",
-          baseFrequency: freq,
-          numOctaves: 2,
-          seed: randInt(Math.random, 1, 10), // not seeded; visual variety okay here
-        });
-        const color = el(SVGNS, "feColorMatrix", {
-          type: "saturate",
-          values: "0",
-        });
-        const comp = el(SVGNS, "feComposite", {
-          operator: "arithmetic",
-          k1: "0",
-          k2: "1",
-          k3: "0",
-          k4: "0",
+          type: turbType,
+          baseFrequency: `${baseFreq} ${baseFreq}`,
+          numOctaves: oct,
+          seed: randInt(rng, 1, 9999),
+          stitchTiles: "stitch",
         });
         f.appendChild(turb);
-        f.appendChild(color);
-        f.appendChild(comp);
+
+        if (kind === "film-dust") {
+          // threshold the noise into sparse specks
+          f.appendChild(
+            el(SVGNS, "feColorMatrix", {
+              type: "matrix",
+              values: `
+              0 0 0 0 0
+              0 0 0 0 0
+              0 0 0 0 0
+              0 0 0 40 -20
+            `
+                .trim()
+                .replace(/\s+/g, " "),
+            })
+          );
+        } else {
+          // desaturate -> contrast -> soften a touch
+          f.appendChild(
+            el(SVGNS, "feColorMatrix", { type: "saturate", values: "0" })
+          );
+          f.appendChild(
+            el(SVGNS, "feComponentTransfer", {}, [
+              el(SVGNS, "feFuncA", {
+                type: "gamma",
+                amplitude: "1",
+                exponent: "0.35",
+                offset: "0",
+              }),
+            ])
+          );
+          f.appendChild(el(SVGNS, "feGaussianBlur", { stdDeviation: "0.15" }));
+        }
+
+        // blend atop: k2 acts like simple alpha (arithmetic comp)
+        f.appendChild(
+          el(SVGNS, "feComposite", {
+            operator: "arithmetic",
+            k1: "0",
+            k2: "1",
+            k3: "0",
+            k4: "0",
+          })
+        );
         defs.appendChild(f);
-        return `url(#${id})`;
+
+        svg.appendChild(
+          el(SVGNS, "rect", {
+            x: 0,
+            y: 0,
+            width: w,
+            height: h,
+            filter: `url(#${id})`,
+            opacity: cfg.noise.opacity,
+          })
+        );
       }
 
       /* =========================
@@ -742,21 +874,6 @@
             rng
           );
 
-          // rounded clip
-          const clip = el(SVGNS, "clipPath", { id: "clipR" });
-          clip.appendChild(
-            el(SVGNS, "rect", {
-              x: 0,
-              y: 0,
-              width: w,
-              height: h,
-              rx: cfg.grid.radius,
-              ry: cfg.grid.radius,
-            })
-          );
-          defs.appendChild(clip);
-
-          // Background
           svg.appendChild(
             el(SVGNS, "rect", {
               x: 0,
@@ -769,7 +886,7 @@
             })
           );
 
-          // Optional hotspot
+          // optional hotspot…
           if (cfg.overlay.hotspot !== "none") {
             const gId = "gradHot";
             const hotG = el(SVGNS, "radialGradient", { id: gId });
@@ -812,7 +929,6 @@
                 width: w,
                 height: h,
                 fill: `url(#${gId})`,
-                "clip-path": "url(#clipR)",
               })
             );
           }
@@ -1016,20 +1132,34 @@
         svg.setAttribute("height", cfg.size.h);
         clearNode(svg);
 
-        // defs
         const defs = el(SVGNS, "defs");
         svg.appendChild(defs);
+
+        // master rounded clip
+        const clip = el(SVGNS, "clipPath", { id: "clipR" });
+        clip.appendChild(
+          el(SVGNS, "rect", {
+            x: 0,
+            y: 0,
+            width: cfg.size.w,
+            height: cfg.size.h,
+            rx: cfg.grid.radius,
+            ry: cfg.grid.radius,
+          })
+        );
+        defs.appendChild(clip);
+
+        // everything goes inside this group
+        const scene = el(SVGNS, "g", { "clip-path": "url(#clipR)" });
+        svg.appendChild(scene);
 
         // determinism
         const rng = mulberry32(hashStr(cfg.seed));
 
-        // base gradient/background
-        const { palette } = renderers.base({ svg, defs, cfg, rng });
+        // base gradient on rounded rect (shows the radius immediately)
+        const palInfo = renderers.base({ svg: scene, defs, cfg, rng }); // switched svg -> scene
+        renderers.gridOverlay({ svg: scene, cfg, rng });
 
-        // overlays
-        renderers.gridOverlay({ svg, cfg, rng });
-
-        // pattern layer
         const kind = cfg.pattern.kind;
         if (kind !== "none") {
           const fn = {
@@ -1038,23 +1168,11 @@
             circles: "pattern_circles",
             bands: "pattern_bands",
           }[kind];
-          renderers[fn]({ svg, cfg, rng, palette });
+          renderers[fn]({ svg: scene, cfg, rng, palette: palInfo.palette });
         }
 
-        // noise overlay rect
         if (cfg.noise.opacity > 0) {
-          const fId = "noiseF";
-          ensureNoise(defs, fId, cfg.noise.freq);
-          const nRect = el(SVGNS, "rect", {
-            x: -cfg.size.w * 0.1,
-            y: -cfg.size.h * 0.1,
-            width: cfg.size.w * 1.2,
-            height: cfg.size.h * 1.2,
-            filter: `url(#${fId})`,
-            opacity: cfg.noise.opacity,
-            "clip-path": "url(#clipR)",
-          });
-          svg.appendChild(nRect);
+          addNoiseLayer({ defs, svg: scene, cfg, rng });
         }
 
         updateConfigOut();
@@ -1099,7 +1217,7 @@
    ========================= */
       const formEls = Array.from(
         document.querySelectorAll(
-          "#seed,#w,#h,#cols,#rows,#pad,#r,#palette,#paletteStrategy,#gradKind,#stops,#noise,#freq,#gridOverlay,#gridOpacity,#hotspot,#pattern,#patOp,#autorefresh"
+          "#seed,#w,#h,#cols,#rows,#pad,#r,#palette,#paletteStrategy,#gradKind,#stops,#noise,#freq,#noiseKind,#gridOverlay,#gridOpacity,#hotspot,#pattern,#patOp,#autorefresh"
         )
       );
 
@@ -1112,17 +1230,16 @@
       btnRandomize.addEventListener("click", (e) => {
         e.preventDefault();
 
-        // seed
         seed.value = "seed-" + Math.random().toString(36).slice(2, 8);
 
         // size
-        w.value = randInt(Math.random, 400, 1600);
-        h.value = randInt(Math.random, 300, 1200);
+        w.value = randInt(Math.random, 600, 1600);
+        h.value = randInt(Math.random, 400, 1200);
 
         // grid
         cols.value = randInt(Math.random, 3, 32);
-        rows.value = randInt(Math.random, 3, 32);
-        pad.value = randInt(Math.random, 0, 24);
+        rows.value = randInt(Math.random, 3, 24);
+        pad.value = randInt(Math.random, 0, 28);
         r.value = randInt(Math.random, 0, 80);
 
         // palette
@@ -1136,11 +1253,20 @@
 
         // gradient
         gradKind.value = choice(Math.random, ["linear", "radial", "sweepish"]);
-        stops.value = randInt(Math.random, 2, 10);
+        stops.value = randInt(Math.random, 3, 10);
 
         // noise
-        noise.value = Math.random().toFixed(2);
-        freq.value = (0.005 + Math.random() * 0.15).toFixed(3);
+        const kinds = [
+          "fractal-fine",
+          "fractal-soft",
+          "paper-fiber",
+          "stipple",
+          "film-dust",
+        ];
+        noiseKind.value = choice(Math.random, kinds);
+        // higher freq → smaller grain; let opacity be subtle
+        freq.value = +(0.5 + Math.random() * 1.2).toFixed(3); // 0.5..1.7
+        noise.value = +(0.08 + Math.random() * 0.35).toFixed(2); // 0.08..0.43
 
         // overlays
         gridOverlay.value = choice(Math.random, [
@@ -1149,7 +1275,7 @@
           "hard",
           "checker",
         ]);
-        gridOpacity.value = Math.random().toFixed(2);
+        gridOpacity.value = +(Math.random() * 0.45).toFixed(2); // softer by default
         hotspot.value = choice(Math.random, [
           "none",
           "corner",
@@ -1165,7 +1291,7 @@
           "circles",
           "bands",
         ]);
-        patOp.value = Math.random().toFixed(2);
+        patOp.value = +(Math.random() * 0.9).toFixed(2);
 
         maybeRender();
       });
