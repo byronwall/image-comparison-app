@@ -2,81 +2,75 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <title>SVG text-anchor: text, tspan, and textPath</title>
+    <title>SVG text-anchor: text, tspan, textPath (clean version)</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <style>
       :root {
-        --guide: #94a3b8; /* slate-400 */
-        --guide-strong: #64748b; /* slate-500 */
         --bg: #0b1020;
-        --ink: #e5e7eb; /* zinc-200 */
-        --start: #60a5fa; /* blue-400 */
-        --middle: #34d399; /* emerald-400 */
-        --end: #f472b6; /* pink-400 */
-        --path: #f59e0b; /* amber-500 */
+        --ink: #e5e7eb;
+        --guide: #94a3b8;
+        --guide-strong: #64748b;
+        --start: #60a5fa;
+        --middle: #34d399;
+        --end: #f472b6;
+        --path: #f59e0b;
       }
-
       html,
       body {
         margin: 0;
         background: var(--bg);
         color: var(--ink);
         font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto,
-          "Helvetica Neue", Arial, "Apple Color Emoji", "Segoe UI Emoji";
+          Arial;
       }
-
       header {
-        padding: 1rem 1.25rem;
-        border-bottom: 1px solid #1f2937;
+        padding: 12px 16px;
+        border-bottom: 1px solid #111827;
       }
-
       header h1 {
-        margin: 0 0 0.25rem 0;
-        font-size: 1.15rem;
+        margin: 0 0 2px 0;
+        font-size: 16px;
       }
       header p {
         margin: 0;
         opacity: 0.85;
-        font-size: 0.95rem;
+        font-size: 13px;
       }
-
       svg {
         display: block;
         width: 100%;
         height: auto;
-        border-top: 1px solid #111827;
       }
-
       .column-title {
         font-size: 12px;
         fill: #cbd5e1;
         letter-spacing: 0.04em;
         text-transform: uppercase;
       }
-
+      .chunk-title {
+        font-size: 14px;
+        font-weight: 600;
+        fill: #e2e8f0;
+      }
+      .label {
+        font-size: 12px;
+        fill: #cbd5e1;
+      }
       .guide-line {
         stroke: var(--guide);
         stroke-width: 1;
         stroke-dasharray: 4 4;
       }
-
       .guide-strong {
         stroke: var(--guide-strong);
         stroke-width: 2;
         stroke-dasharray: 6 6;
       }
-
       .anchor-dot {
         fill: var(--guide-strong);
         stroke: var(--bg);
         stroke-width: 2;
       }
-
-      .label {
-        font-size: 12px;
-        fill: #cbd5e1;
-      }
-
       .start {
         fill: var(--start);
       }
@@ -86,17 +80,10 @@
       .end {
         fill: var(--end);
       }
-
       .winding {
         fill: none;
         stroke: var(--path);
         stroke-width: 3;
-      }
-
-      .chunk-title {
-        font-size: 14px;
-        font-weight: 600;
-        fill: #e2e8f0;
       }
     </style>
   </head>
@@ -107,22 +94,22 @@
         <code>&lt;tspan&gt;</code>, and <code>&lt;textPath&gt;</code>
       </h1>
       <p>
-        Guides and dots show the <em>anchor point</em>. Try inspecting in
-        devtools—this page logs computed positions.
+        Short labels + gentle path to keep things readable. Includes an example
+        tree:
+        <code
+          >&lt;text&gt;&lt;textPath&gt;&lt;tspan/&gt;&lt;tspan/&gt;&lt;/textPath&gt;&lt;/text&gt;</code
+        >.
       </p>
     </header>
 
-    <!-- ViewBox sized for comfortable spacing -->
-    <svg viewBox="0 0 1100 700" aria-labelledby="title desc" role="img">
-      <title id="title">
-        Demo of SVG text-anchor for text, tspan, and textPath
-      </title>
-      <desc id="desc">
-        Three groups: plain text with x/y, tspans with per-line anchor, and text
-        paths along a winding curve.
+    <svg viewBox="0 0 1100 640" aria-labelledby="t d" role="img">
+      <title id="t">text-anchor demo (simplified)</title>
+      <desc id="d">
+        Three columns for text, tspan, and textPath; plus a second textPath with
+        nested tspans.
       </desc>
 
-      <!-- Column headings -->
+      <!-- Column titles -->
       <text class="column-title" x="150" y="40" text-anchor="middle">
         text @ x=150
       </text>
@@ -130,11 +117,10 @@
         tspan @ x=500
       </text>
       <text class="column-title" x="850" y="40" text-anchor="middle">
-        textPath (startOffset = 50%)
+        textPath (startOffset=50%)
       </text>
 
-      <!-- ====== 1) <text> with text-anchor at a fixed x ====== -->
-      <!-- Vertical guide at x = 150 -->
+      <!-- 1) <text> -->
       <line class="guide-line" x1="150" y1="60" x2="150" y2="300" />
       <text
         class="chunk-title"
@@ -145,31 +131,18 @@
       >
         text
       </text>
-
-      <!-- Anchor dots (for visibility) -->
       <circle class="anchor-dot" cx="150" cy="110" r="4" />
       <circle class="anchor-dot" cx="150" cy="150" r="4" />
       <circle class="anchor-dot" cx="150" cy="190" r="4" />
-
-      <!-- start / middle / end anchored at x=150 -->
-      <text class="start" x="150" y="110" text-anchor="start">
-        text-anchor=start → text begins at x=150
-      </text>
-      <text class="middle" x="150" y="150" text-anchor="middle">
-        text-anchor=middle → text centers on x=150
-      </text>
-      <text class="end" x="150" y="190" text-anchor="end">
-        text-anchor=end → text ends at x=150
-      </text>
-
-      <!-- Inline labels -->
+      <text class="start" x="150" y="110" text-anchor="start">start</text>
+      <text class="middle" x="150" y="150" text-anchor="middle">middle</text>
+      <text class="end" x="150" y="190" text-anchor="end">end</text>
       <text class="label" x="150" y="230" text-anchor="middle">
         anchor line
       </text>
       <line class="guide-strong" x1="150" y1="235" x2="150" y2="295" />
 
-      <!-- ====== 2) <tspan> each with its own text-anchor ====== -->
-      <!-- Vertical guide at x = 500 -->
+      <!-- 2) <tspan> -->
       <line class="guide-line" x1="500" y1="60" x2="500" y2="300" />
       <text
         class="chunk-title"
@@ -180,30 +153,22 @@
       >
         tspan
       </text>
-
-      <!-- One <text>, three <tspan> lines. Each tspan uses x=500 but different text-anchor -->
       <text id="tspan-block" x="500" y="110">
-        <tspan class="start" x="500" dy="0" text-anchor="start">
-          tspan: text-anchor=start (begins at x=500)
-        </tspan>
+        <tspan class="start" x="500" dy="0" text-anchor="start">start</tspan>
         <tspan class="middle" x="500" dy="40" text-anchor="middle">
-          tspan: text-anchor=middle (centers on x=500)
+          middle
         </tspan>
-        <tspan class="end" x="500" dy="40" text-anchor="end">
-          tspan: text-anchor=end (ends at x=500)
-        </tspan>
+        <tspan class="end" x="500" dy="40" text-anchor="end">end</tspan>
       </text>
-
       <circle class="anchor-dot" cx="500" cy="110" r="4" />
       <circle class="anchor-dot" cx="500" cy="150" r="4" />
       <circle class="anchor-dot" cx="500" cy="190" r="4" />
-
       <text class="label" x="500" y="230" text-anchor="middle">
         anchor line
       </text>
       <line class="guide-strong" x1="500" y1="235" x2="500" y2="295" />
 
-      <!-- ====== 3) <textPath> with startOffset at 50% and varying text-anchor ====== -->
+      <!-- 3) <textPath> with short labels -->
       <text
         class="chunk-title"
         x="850"
@@ -214,32 +179,30 @@
         textPath
       </text>
 
-      <!-- Winding path (shared) -->
+      <!-- Smoothed "winding" path (long but gentle; no tight loops near edges) -->
       <path
         id="winding"
         class="winding"
-        d="
-            M 650,360
-            C 720,260 830,450 900,360
-            S 1030,270 1060,340
-            C 1030,420 930,430 880,380
-            S 720,300 690,380
-          "
+        d="M 660,360
+           C 720,300 800,420 870,360
+           S 1000,300 1040,360
+           S 920,440 850,380
+           S 740,320 690,360"
       />
 
-      <!-- Anchor marker (computed via JS at 50%) -->
+      <!-- Anchor marker at 50% -->
       <circle
-        id="textpath-anchor-dot"
+        id="tp-anchor"
         class="anchor-dot"
         r="5"
         cx="-10"
         cy="-10"
-      />
-      <text id="textpath-anchor-label" class="label" x="-10" y="-10">
+      ></circle>
+      <text id="tp-anchor-label" class="label" x="-10" y="-10">
         anchor @ 50%
       </text>
 
-      <!-- Three textPaths with the SAME startOffset=50%, different text-anchor values -->
+      <!-- Three short labels at the same startOffset -->
       <text dy="-10">
         <textPath
           class="start"
@@ -247,7 +210,7 @@
           startOffset="50%"
           text-anchor="start"
         >
-          textPath: text-anchor=start (text "begins" at the 50% point)
+          start
         </textPath>
       </text>
       <text dy="18">
@@ -257,7 +220,7 @@
           startOffset="50%"
           text-anchor="middle"
         >
-          textPath: text-anchor=middle (text is centered at the 50% point)
+          middle
         </textPath>
       </text>
       <text dy="46">
@@ -267,98 +230,84 @@
           startOffset="50%"
           text-anchor="end"
         >
-          textPath: text-anchor=end (text "ends" at the 50% point)
+          end
         </textPath>
+      </text>
+
+      <!-- 4) textPath with nested tspans (tree: <text><textPath><tspan/><tspan/></textPath></text>) -->
+      <text
+        class="chunk-title"
+        x="850"
+        y="420"
+        text-anchor="middle"
+        dominant-baseline="hanging"
+      >
+        textPath with &lt;tspan&gt;s
+      </text>
+      <path
+        id="winding-2"
+        class="winding"
+        d="M 640,470
+           C 720,430 780,520 860,480
+           S 990,430 1040,490"
+      />
+      <text y="0">
+        <!-- tree -->
+        <textPath
+          href="#winding-2"
+          startOffset="40%"
+          text-anchor="middle"
+          id="tp-with-tspans"
+        >
+          <tspan class="start">Hello</tspan>
+          <tspan dx="10" class="end">World</tspan>
+        </textPath>
+      </text>
+      <!-- visual aid for that anchor -->
+      <circle
+        id="tp2-anchor"
+        class="anchor-dot"
+        r="4"
+        cx="-10"
+        cy="-10"
+      ></circle>
+      <text id="tp2-anchor-label" class="label" x="-10" y="-10">
+        anchor @ 40%
       </text>
 
       <!-- Legend -->
       <g transform="translate(24, 330)">
         <text class="column-title" x="0" y="-16">Legend</text>
         <circle class="anchor-dot" cx="6" cy="0" r="4"></circle>
-        <text class="label" x="18" y="4">
-          Anchor point (x for text/tspan, startOffset point for textPath)
-        </text>
-
+        <text class="label" x="18" y="4">Anchor point (x or startOffset)</text>
         <rect x="0" y="18" width="12" height="12" fill="var(--start)" />
-        <text class="label" x="18" y="28">text-anchor=start</text>
-
+        <text class="label" x="18" y="28">start</text>
         <rect x="0" y="38" width="12" height="12" fill="var(--middle)" />
-        <text class="label" x="18" y="48">text-anchor=middle</text>
-
+        <text class="label" x="18" y="48">middle</text>
         <rect x="0" y="58" width="12" height="12" fill="var(--end)" />
-        <text class="label" x="18" y="68">text-anchor=end</text>
+        <text class="label" x="18" y="68">end</text>
       </g>
     </svg>
 
     <script>
-      // --- Debug helpers (visible in DevTools) ---
-      function logBBox(label, el) {
-        if (!el) return;
-        const b = el.getBBox?.();
-        if (!b) return;
-        console.log(`[bbox] ${label}`, {
-          x: b.x,
-          y: b.y,
-          width: b.width,
-          height: b.height,
-        });
-      }
-
-      function setTextPathAnchorMarker() {
-        const path = document.getElementById("winding");
-        const dot = document.getElementById("textpath-anchor-dot");
-        const lab = document.getElementById("textpath-anchor-label");
+      function markAnchor(pathId, dotId, labelId, offsetPct) {
+        const path = document.getElementById(pathId);
+        const dot = document.getElementById(dotId);
+        const lab = document.getElementById(labelId);
         if (!path || !dot || !lab) return;
-
-        const total = path.getTotalLength();
-        const offsetPct = 0.5; // 50%
-        const p = path.getPointAtLength(total * offsetPct);
-
+        const p = path.getPointAtLength(path.getTotalLength() * offsetPct);
         dot.setAttribute("cx", p.x);
         dot.setAttribute("cy", p.y);
-
         lab.setAttribute("x", p.x + 10);
         lab.setAttribute("y", p.y - 10);
-
-        console.log("Computed textPath anchor:", {
-          totalLength: Math.round(total),
-          offsetPercent: 50,
-          point: { x: Math.round(p.x), y: Math.round(p.y) },
-        });
       }
-
-      function logAll() {
-        console.log("=== text-anchor demo boot ===");
-        // Text examples
-        document
-          .querySelectorAll("text.start, text.middle, text.end")
-          .forEach((el, i) => {
-            logBBox(`text[${i}] ${el.getAttribute("text-anchor")}`, el);
-          });
-
-        // tspan examples (log parent text, then each tspan)
-        const tspanBlock = document.getElementById("tspan-block");
-        logBBox("tspan <text> parent", tspanBlock);
-        tspanBlock?.querySelectorAll("tspan").forEach((el, i) => {
-          logBBox(`tspan[${i}] ${el.getAttribute("text-anchor")}`, el);
-        });
-
-        // textPath
-        document.querySelectorAll("textPath").forEach((el, i) => {
-          logBBox(`textPath[${i}] ${el.getAttribute("text-anchor")}`, el);
-        });
-      }
-
-      // Layout-sensitive operations after first paint
       requestAnimationFrame(() => {
-        setTextPathAnchorMarker();
-        logAll();
+        markAnchor("winding", "tp-anchor", "tp-anchor-label", 0.5); // 50%
+        markAnchor("winding-2", "tp2-anchor", "tp2-anchor-label", 0.4); // 40%
       });
-
-      // Recompute on resize (path length is stable, but label placement may shift in some UAs)
       window.addEventListener("resize", () => {
-        setTextPathAnchorMarker();
-        console.log("Resized: recomputed textPath anchor.");
+        markAnchor("winding", "tp-anchor", "tp-anchor-label", 0.5);
+        markAnchor("winding-2", "tp2-anchor", "tp2-anchor-label", 0.4);
       });
     </script>
   </body>
