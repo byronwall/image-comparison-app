@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Animation Attach/Reattach Test</title>
+    <style>
+      :root {
+        --speed: 3000ms;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+        line-height: 1.45;
+        padding: 16px;
+        color: #1f2937;
+        background: #fbfbfd;
+      }
+      h1 {
+        margin: 0 0 12px;
+        font-size: 18px;
+      }
+      .row {
+        display: flex;
+        gap: 16px;
+        align-items: flex-start;
+      }
+      .parent {
+        flex: 1;
+        min-height: 160px;
+        border: 2px dashed #cbd5e1;
+        border-radius: 10px;
+        padding: 12px;
+        background: #f8fafc;
+      }
+      .parent h2 {
+        margin: 0 0 8px;
+        font-size: 13px;
+        font-weight: 700;
+        color: #475569;
+        letter-spacing: 0.2px;
+      }
+      .log {
+        margin-top: 12px;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 12px;
+        white-space: pre-line;
+        background: #0b1020;
+        color: #c9ffd7;
+        padding: 10px 12px;
+        border-radius: 8px;
+        min-height: 48px;
+        max-height: 220px;
+        overflow: auto;
+      }
+      .controls {
+        margin-top: 12px;
+        display: flex;
+        gap: 8px;
+        align-items: center;
+      }
+      button {
+        font: inherit;
+        padding: 6px 10px;
+        border-radius: 8px;
+        border: 1px solid #cbd5e1;
+        background: white;
+        cursor: pointer;
+      }
+      button:hover {
+        background: #f1f5f9;
+      }
+      button:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+      .hint {
+        color: #64748b;
+        font-size: 12px;
+      }
+
+      /* Animated element */
+      .box {
+        background: linear-gradient(135deg, #8ec5fc 0%, #e0c3fc 100%);
+        border-radius: 10px;
+        padding: 12px 14px;
+        color: #111827;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+        overflow: hidden;
+        opacity: 0; /* start hidden; will fade in via CSS animation class */
+      }
+      .box > .content {
+        padding-block: 4px;
+      }
+      .box p {
+        margin: 8px 0;
+      }
+      .box ul {
+        margin: 8px 0;
+        padding-left: 18px;
+      }
+
+      /* Opacity animation controlled by a class */
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+        }
+        to {
+          opacity: 1;
+        }
+      }
+      .fade-in {
+        animation: fadeIn var(--speed) cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .fade-in {
+          animation-duration: 1ms;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Attach → Animate → Wait → Reattach</h1>
+    <p class="hint">
+      This demo explores whether a class-based CSS opacity animation restarts
+      when an element that has animated is moved to a different parent. Watch
+      the log for animationstart events on reattach. Spoiler: It restarts
+      despite being the same DOM element.
+    </p>
+    <div class="row">
+      <div class="parent" id="parentA">
+        <h2>Parent A</h2>
+      </div>
+      <div class="parent" id="parentB">
+        <h2>Parent B</h2>
+      </div>
+    </div>
+
+    <div class="controls">
+      <button id="replayBtn">Replay sequence</button>
+
+      <span class="hint"
+        >Watch the log to see if a second opacity animation occurs.</span
+      >
+    </div>
+    <div class="log" id="log"></div>
+
+    <script>
+      const parentA = document.getElementById("parentA");
+      const parentB = document.getElementById("parentB");
+      const logEl = document.getElementById("log");
+      const replayBtn = document.getElementById("replayBtn");
+
+      function log(msg) {
+        const t = new Date().toLocaleTimeString();
+        logEl.textContent += `[${t}] ${msg}\n`;
+        logEl.scrollTop = logEl.scrollHeight;
+      }
+
+      // Global animationstart management: single listener + waiter registry
+      const animationWaiters = new Set();
+
+      document.addEventListener("animationstart", (e) => {
+        console.log("animation start", e.animationName, e);
+
+        // Walk a copy to allow deletion while iterating
+        for (const waiter of Array.from(animationWaiters)) {
+          if (
+            waiter.element === e.target &&
+            (!waiter.animationName || waiter.animationName === e.animationName)
+          ) {
+            animationWaiters.delete(waiter);
+            waiter.resolve({ status: "started", event: e });
+          }
+        }
+      });
+
+      function waitForAnimationStart(
+        element,
+        animationName,
+        { timeoutMs } = {}
+      ) {
+        return new Promise((resolve) => {
+          const waiter = { element, animationName, resolve };
+          animationWaiters.add(waiter);
+          if (typeof timeoutMs === "number") {
+            setTimeout(() => {
+              if (animationWaiters.has(waiter)) {
+                animationWaiters.delete(waiter);
+                resolve({ status: "timeout" });
+              }
+            }, timeoutMs);
+          }
+        });
+      }
+
+      function createBox() {
+        const box = document.createElement("div");
+        box.className = "box";
+        box.innerHTML = `
+					<div class="content">
+						<strong>Animated panel</strong>
+						<p>This element uses a CSS animation on opacity. It fades in when added and we listen for animationend.</p>
+						<ul>
+							<li>Opacity animates from 0 → 1 via a class-based animation.</li>
+							<li>Then we wait 3 seconds.</li>
+							<li>Then reattach to another parent to observe behavior.</li>
+						</ul>
+					</div>
+				`;
+        return box;
+      }
+
+      function startFadeIn(el) {
+        el.classList.add("fade-in");
+        log("started fade-in animation");
+      }
+
+      async function runSequence() {
+        replayBtn.disabled = true;
+        logEl.textContent = "";
+        // Remove any previous demo boxes
+        document.querySelectorAll(".box").forEach((n) => n.remove());
+
+        const box = createBox();
+        parentA.appendChild(box);
+        log("added to Parent A (opacity:0)");
+
+        // Ensure initial layout with opacity:0 is committed before animating
+        await new Promise(requestAnimationFrame);
+        await new Promise(requestAnimationFrame);
+
+        // Wait for the first opacity animation start via global listener
+        const firstAnimStart = waitForAnimationStart(box, "fadeIn");
+        startFadeIn(box);
+        await firstAnimStart;
+        log("first animationstart (fadeIn)");
+
+        log("waiting 3s…");
+        await new Promise((r) => setTimeout(r, 3000));
+
+        // Move to Parent B
+        parentB.appendChild(box);
+        log("reattached to Parent B");
+
+        // Observe whether another opacity animation starts using global listener with timeout
+        const secondAnim = waitForAnimationStart(box, "fadeIn", {
+          timeoutMs: 1000,
+        });
+
+        const result = await secondAnim;
+        if (result.status === "started") {
+          log("animationstart fired again (fadeIn)");
+        } else {
+          log("no second opacity animationstart observed within 1s");
+        }
+
+        replayBtn.disabled = false;
+      }
+
+      replayBtn.addEventListener("click", runSequence);
+
+      // Auto-run once on load
+      runSequence();
+    </script>
+  </body>
+</html>
