@@ -12,6 +12,8 @@
   }
 
   const log = (...a) => console.log("[InlineExport]", ...a);
+  const warn = (...a) => console.warn("[InlineExport]", ...a);
+  const err = (...a) => console.error("[InlineExport]", ...a);
 
   const state = {
     active: true,
@@ -293,6 +295,32 @@
     return container;
   };
 
+  // ----- DevTools helper -----
+  const openInInspector = (el) => {
+    // Try Chrome/Chromium's injected inspect() if available
+    try {
+      if (typeof window.inspect === "function") {
+        log("Opening DevTools inspector for:", el);
+        window.inspect(el);
+        return true;
+      }
+    } catch (e) {
+      err("inspect(el) failed:", e);
+    }
+    // Fallbacks: store a reference and guide the user
+    try {
+      // Expose a global so the user can run inspect(...) manually
+      window.__INLINE_EXPORT_LAST_INSPECT__ = el;
+      warn(
+        "DevTools inspect() not found. Open DevTools and run: inspect(window.__INLINE_EXPORT_LAST_INSPECT__)"
+      );
+      // Pause execution if DevTools are open, giving user a breakpoint near target
+      // eslint-disable-next-line no-debugger
+      inspect(el);
+    } catch {}
+    return false;
+  };
+
   // ----- Chooser -----
   const openChooser = (x, y) => {
     detachInspect();
@@ -319,7 +347,15 @@
         style: { maxHeight: "50vh", overflow: "auto" },
       },
       items.map(({ el, peNone }) => {
-        const btn = $("button", { class: "inline-export-chooser-item" }, [
+        const row = $("div", { class: "inline-export-chooser-row" });
+        css(row, {
+          display: "flex",
+          alignItems: "stretch",
+          gap: "8px",
+          margin: "6px 0",
+        });
+
+        const selectBtn = $("button", { class: "inline-export-chooser-item" }, [
           document.createTextNode(labelFor(el) + " "),
           peNone
             ? $(
@@ -334,31 +370,64 @@
             shortPath(el)
           ),
         ]);
-        css(btn, {
-          width: "100%",
+        css(selectBtn, {
+          flex: "1 1 auto",
           textAlign: "left",
           padding: "8px 10px",
           border: "1px solid #ddd",
           borderRadius: "6px",
-          margin: "6px 0",
           background: "#fff",
           fontFamily:
             "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace",
           cursor: "pointer",
         });
         if (peNone) {
-          css(btn, { background: "#fff8eb", borderColor: "#f0c77a" });
-          btn.setAttribute("title", "This element has pointer-events: none");
+          css(selectBtn, { background: "#fff8eb", borderColor: "#f0c77a" });
+          selectBtn.setAttribute(
+            "title",
+            "This element has pointer-events: none"
+          );
         }
-        btn.addEventListener("mouseenter", () => positionOverlay(el));
-        btn.addEventListener("mouseleave", () =>
+        selectBtn.addEventListener("mouseenter", () => positionOverlay(el));
+        selectBtn.addEventListener("mouseleave", () =>
           positionOverlay(state.hoverEl)
         );
-        btn.addEventListener("click", () => {
+        selectBtn.addEventListener("click", () => {
           closeChooser();
           openExportView(el);
         });
-        return btn;
+
+        const inspectBtn = $("button", { class: "inline-export-inspect" }, [
+          "Inspect",
+        ]);
+        css(inspectBtn, {
+          flex: "0 0 auto",
+          padding: "8px 10px",
+          border: "1px solid #ccc",
+          borderRadius: "6px",
+          background: "#f7f7f7",
+          cursor: "pointer",
+          fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, sans-serif",
+          whiteSpace: "nowrap",
+        });
+        inspectBtn.setAttribute(
+          "title",
+          "Open this element in Chrome DevTools"
+        );
+        inspectBtn.addEventListener("click", (evt) => {
+          evt.stopPropagation();
+          evt.preventDefault();
+          try {
+            positionOverlay(el);
+            openInInspector(el);
+          } catch (e) {
+            err("Inspector button failed:", e);
+          }
+        });
+
+        row.appendChild(selectBtn);
+        row.appendChild(inspectBtn);
+        return row;
       })
     );
     const chooser = popupShell("Choose an element under pointer", list);
@@ -549,12 +618,43 @@
     openChooser(state.pointer.x, state.pointer.y);
   };
   const onKey = (e) => {
-    console.log("key press", e.key);
+    // Lightweight debug logging for function keys and our shortcuts
+    const k = String(e.key);
+    const c = String(e.code || "");
+    if (/^F\d+$/i.test(k) || /^F\d+$/i.test(c) || k === "Escape") {
+      log("keydown:", {
+        key: k,
+        code: c,
+        keyCode: e.keyCode,
+        meta: e.metaKey,
+        ctrl: e.ctrlKey,
+        alt: e.altKey,
+        shift: e.shiftKey,
+      });
+    }
+    if (k === "Escape") {
+      window.InlineExport?.cleanup();
+      return;
+    }
+    // F16 key to (re)start inspect overlay from any phase
+    const isF16 = k.toUpperCase() === "F16" || c.toUpperCase() === "F16";
+    if (isF16) {
+      e.preventDefault();
+      e.stopPropagation();
+      log("F16 detected -> restartInspect()");
+      try {
+        window.InlineExport?.restartInspect();
+      } catch (err2) {
+        err("restartInspect failed:", err2);
+      }
+    }
+  };
 
-    if (e.key === "Escape") window.InlineExport?.cleanup();
-    // F16 key to restart inspect overlay
-    if (e.key === "F16") {
-      window.InlineExport?.restartInspect();
+  const attachGlobalKeys = () => {
+    // Attach once for the lifecycle of this tool; do not tie to inspect mode
+    if (!state._globalKeysAttached) {
+      document.addEventListener("keydown", onKey, { capture: true });
+      state._globalKeysAttached = true;
     }
   };
 
@@ -564,13 +664,11 @@
     state.overlay = state.overlay || makeOverlay();
     document.addEventListener("mousemove", onPointerMove, true);
     document.addEventListener("click", onClick, true);
-    document.addEventListener("keydown", onKey, { capture: true });
     log("Inspect mode ON. Move mouse and click to choose. ESC to exit.");
   };
   const detachInspect = () => {
     document.removeEventListener("mousemove", onPointerMove, true);
     document.removeEventListener("click", onClick, true);
-    document.removeEventListener("keydown", onKey, { capture: true });
     if (state.overlay) {
       state.overlay.remove();
       state.overlay = null;
@@ -593,11 +691,16 @@
       detachInspect();
       closeChooser();
       closeExportView();
+      if (state._globalKeysAttached) {
+        document.removeEventListener("keydown", onKey, { capture: true });
+        state._globalKeysAttached = false;
+      }
       log("Cleaned up.");
       this.active = false;
     },
   };
 
   // Kickoff
+  attachGlobalKeys();
   attachInspect(); // <<< now attaches because phase starts "idle"
 })();
