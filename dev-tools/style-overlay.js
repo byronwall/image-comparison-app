@@ -24,9 +24,12 @@
     chooser: null,
     exportView: null,
     defaultStyleCache: new Map(),
+    // Holds the <style> element that force-enables pointer-events during picking
+    pointerOverrideStyleEl: null,
   };
 
   const UI_ATTR = "data-inline-export-ui";
+  const OVERLAY_ATTR = "data-inline-export-overlay";
   const css = (el, styles) => Object.assign(el.style, styles);
   const $ = (tag, props = {}, children = []) => {
     const el = document.createElement(tag);
@@ -52,6 +55,28 @@
         ? "." + el.className.trim().split(/\s+/).filter(Boolean).join(".")
         : "";
     return `${el.tagName.toLowerCase()}${id}${cls}`;
+  };
+
+  // ----- Temporary pointer-events override for picking -----
+  const enablePointerEventsOverride = () => {
+    if (state.pointerOverrideStyleEl) return;
+    const st = document.createElement("style");
+    st.setAttribute(UI_ATTR, "1");
+    st.setAttribute("data-inline-export-pointer-override", "1");
+    // Force all elements to participate in hit-testing, but keep our overlay non-pickable
+    st.textContent = [
+      "/* InlineExport pointer-events override: enable picking for all elements */",
+      "*,:before,:after{pointer-events:auto!important}",
+      // Ensure our injected overlay always remains non-pickable
+      `[${OVERLAY_ATTR}]{pointer-events:none!important}`,
+    ].join("\n");
+    (document.head || document.documentElement).appendChild(st);
+    state.pointerOverrideStyleEl = st;
+  };
+  const disablePointerEventsOverride = () => {
+    const st = state.pointerOverrideStyleEl;
+    if (st && st.parentNode) st.parentNode.removeChild(st);
+    state.pointerOverrideStyleEl = null;
   };
   const shortPath = (el, max = 4) => {
     const parts = [];
@@ -216,6 +241,8 @@
   const makeOverlay = () => {
     const ol = document.createElement("div");
     ol.setAttribute(UI_ATTR, "1");
+    // Mark specifically as the non-pickable overlay so our global override won't affect it
+    ol.setAttribute(OVERLAY_ATTR, "1");
     css(ol, {
       position: "fixed",
       zIndex: 2147483646,
@@ -323,11 +350,20 @@
 
   // ----- Chooser -----
   const openChooser = (x, y) => {
-    detachInspect();
+    // Stop inspect listeners & overlay, but keep pointer-events override on while we compute the stack
+    detachInspect({ keepPointerOverride: true });
     state.phase = "choose";
+    // Ensure the overlay exists during chooser mode so hover previews are visible
+    state.overlay = state.overlay || makeOverlay();
+    // Clear any previous highlight
+    positionOverlay(null);
+    // Ensure override is enabled when computing stack so pointer-events:none elements are included
+    enablePointerEventsOverride();
     let stack = (document.elementsFromPoint?.(x, y) || []).filter(
       (n) => n.nodeType === 1 && !n.hasAttribute(UI_ATTR)
     );
+    // We only needed the override to build the stack; turn it off now to avoid affecting the page
+    disablePointerEventsOverride();
     // Include elements that are not normally hittable due to pointer-events: none
     // Mark these with a glyph in the list.
     const specialGlyph = "⚑"; // indicates pointer-events:none
@@ -388,10 +424,10 @@
             "This element has pointer-events: none"
           );
         }
+        // Show outline of the corresponding element when hovering the list item
         selectBtn.addEventListener("mouseenter", () => positionOverlay(el));
-        selectBtn.addEventListener("mouseleave", () =>
-          positionOverlay(state.hoverEl)
-        );
+        // Hide outline when leaving the list item (do not rely on inspect hoverEl in choose phase)
+        selectBtn.addEventListener("mouseleave", () => positionOverlay(null));
         selectBtn.addEventListener("click", () => {
           closeChooser();
           openExportView(el);
@@ -488,6 +524,8 @@
   const closeChooser = () => {
     state.chooser?.remove();
     state.chooser = null;
+    // Remove any lingering outline when chooser closes
+    positionOverlay(null);
   };
 
   // ----- Export -----
@@ -632,10 +670,7 @@
         shift: e.shiftKey,
       });
     }
-    if (k === "Escape") {
-      window.InlineExport?.cleanup();
-      return;
-    }
+
     // F16 key to (re)start inspect overlay from any phase
     const isF16 = k.toUpperCase() === "F16" || c.toUpperCase() === "F16";
     if (isF16) {
@@ -662,13 +697,16 @@
     if (state.phase === "inspect") return;
     state.phase = "inspect";
     state.overlay = state.overlay || makeOverlay();
+    enablePointerEventsOverride();
     document.addEventListener("mousemove", onPointerMove, true);
     document.addEventListener("click", onClick, true);
     log("Inspect mode ON. Move mouse and click to choose. ESC to exit.");
   };
-  const detachInspect = () => {
+  const detachInspect = (opts = {}) => {
+    const { keepPointerOverride = false } = opts || {};
     document.removeEventListener("mousemove", onPointerMove, true);
     document.removeEventListener("click", onClick, true);
+    if (!keepPointerOverride) disablePointerEventsOverride();
     if (state.overlay) {
       state.overlay.remove();
       state.overlay = null;
