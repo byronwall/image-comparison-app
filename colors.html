@@ -1,0 +1,1087 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>HSL Palette Generator — 5×10 Groups</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      :root {
+        --bg: #0f172a; /* slate-900 */
+        --panel: #111827; /* gray-900 */
+        --panel-2: #0b1220; /* deep panel */
+        --text: #e5e7eb; /* gray-200 */
+        --muted: #94a3b8; /* slate-400 */
+        --accent: #38bdf8; /* sky-400 */
+        --border: #1f2937; /* gray-800 */
+        --chip: #0b2540;
+      }
+      html,
+      body {
+        height: 100%;
+        background: radial-gradient(
+          1200px 800px at 30% 10%,
+          #0b1220 0%,
+          #0a1020 40%,
+          var(--bg) 100%
+        );
+        color: var(--text);
+        margin: 0;
+        font: 14px/1.4 system-ui, -apple-system, Segoe UI, Roboto, Inter,
+          "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji",
+          "Segoe UI Emoji", "Segoe UI Symbol";
+      }
+      .wrap {
+        max-width: 1200px;
+        margin: 32px auto;
+        padding: 0 16px 40px;
+      }
+      header {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 12px;
+        align-items: center;
+        margin-bottom: 16px;
+      }
+      h1 {
+        font-size: 20px;
+        margin: 0;
+        letter-spacing: 0.2px;
+      }
+      .controls {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      .subgrid {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      .field {
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+        min-width: 120px;
+      }
+      .field label {
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+        color: var(--muted);
+      }
+      input[type="number"],
+      input[type="range"] {
+        width: 100%;
+      }
+      input[type="number"],
+      input[type="range"],
+      .mini-select {
+        background: #0d1525;
+        border: 1px solid var(--border);
+        color: var(--text);
+        border-radius: 8px;
+        padding: 4px 6px;
+        font-size: 12px;
+      }
+      input[type="range"] {
+        padding: 0;
+        height: 26px;
+      }
+      .group-config {
+        padding: 8px 10px 10px;
+        border-top: 1px solid var(--border);
+        background: linear-gradient(
+          180deg,
+          rgba(56, 189, 248, 0.05),
+          rgba(0, 0, 0, 0)
+        );
+        display: grid;
+        gap: 8px;
+      }
+      .group-config .row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        align-items: flex-end;
+      }
+      .inline-field {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+      .inline-field label {
+        font-size: 10px;
+        color: var(--muted);
+      }
+      .lock-btn {
+        background: #162132;
+        font-size: 11px;
+        padding: 4px 8px;
+        border-radius: 8px;
+        cursor: pointer;
+        border: 1px solid var(--border);
+        display: flex;
+        gap: 4px;
+        align-items: center;
+      }
+      .lock-btn[data-locked="true"] {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.4) inset;
+      }
+      .mini-select {
+        padding: 4px 6px;
+      }
+      .toolbar-divider {
+        width: 1px;
+        background: var(--border);
+        align-self: stretch;
+      }
+      .secondary-actions {
+        display: flex;
+        gap: 8px;
+      }
+      .btn-small.sec {
+        background: #182032;
+      }
+      .row.ranges {
+        gap: 4px;
+      }
+      .range-pair {
+        display: flex;
+        gap: 4px;
+        align-items: center;
+      }
+      .range-pair input[type="number"] {
+        width: 60px;
+      }
+      .preset-badge {
+        font-size: 10px;
+        padding: 2px 6px;
+        background: #132235;
+        border: 1px solid var(--border);
+        border-radius: 999px;
+      }
+      .footer .btn-small.alt {
+        background: #162132;
+      }
+      .json-badge {
+        font-size: 11px;
+        margin-left: auto;
+        opacity: 0.7;
+      }
+      .danger {
+        color: #f87171;
+      }
+      button,
+      select {
+        background: linear-gradient(180deg, #1f2937, #0f172a);
+        border: 1px solid var(--border);
+        color: var(--text);
+        padding: 8px 12px;
+        border-radius: 10px;
+        cursor: pointer;
+        transition: border-color 0.15s ease, transform 0.02s ease;
+      }
+      button:hover,
+      select:hover {
+        border-color: var(--accent);
+      }
+      button:active {
+        transform: translateY(1px);
+      }
+      .hint {
+        color: var(--muted);
+        margin: 8px 0 18px;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(1, minmax(0, 1fr));
+        gap: 16px;
+      }
+      @media (min-width: 700px) {
+        .grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+      @media (min-width: 1024px) {
+        .grid {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+      }
+      .group {
+        background: linear-gradient(180deg, var(--panel), var(--panel-2));
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        overflow: clip;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+      }
+      .group-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 10px 12px;
+        border-bottom: 1px solid var(--border);
+        background: linear-gradient(
+          180deg,
+          rgba(56, 189, 248, 0.08),
+          rgba(56, 189, 248, 0)
+        );
+      }
+      .group-title {
+        font-weight: 600;
+        font-size: 13px;
+        letter-spacing: 0.3px;
+      }
+      .chip {
+        font-size: 11px;
+        padding: 2px 8px;
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        color: var(--muted);
+        background: var(--chip);
+        white-space: nowrap;
+      }
+      .swatches {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 0;
+      }
+      .swatch {
+        aspect-ratio: 3 / 2;
+        display: grid;
+        grid-template-rows: 1fr auto;
+        overflow: clip;
+        border-right: 1px solid rgba(255, 255, 255, 0.09);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      }
+      .swatch:nth-child(5n) {
+        border-right: none;
+      }
+      .color {
+        width: 100%;
+        height: 100%;
+      }
+      .meta {
+        font-size: 11px;
+        padding: 6px 8px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        justify-content: space-between;
+        background: rgba(0, 0, 0, 0.18);
+        backdrop-filter: blur(3px);
+        color: #ecfeff;
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+      }
+      .tag {
+        font-variant-numeric: tabular-nums;
+        opacity: 0.92;
+      }
+      .footer {
+        display: flex;
+        gap: 8px;
+        border-top: 1px solid var(--border);
+        padding: 10px 12px;
+        background: linear-gradient(
+          180deg,
+          rgba(0, 0, 0, 0.06),
+          rgba(0, 0, 0, 0)
+        );
+      }
+      .footer .btn-small {
+        font-size: 12px;
+        padding: 6px 10px;
+      }
+      textarea#payload {
+        width: 100%;
+        min-height: 120px;
+        margin-top: 16px;
+        background: #0a0f1f;
+        color: #e2e8f0;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 10px 12px;
+        font-family: ui-monospace, Menlo, Monaco, Consolas, "SF Mono",
+          "Roboto Mono", "Liberation Mono", monospace;
+        font-size: 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header>
+        <h1>HSL Palette Generator (editable groups)</h1>
+        <div class="controls" id="globalControls">
+          <div class="field" style="max-width: 140px">
+            <label for="groupCount">Groups</label>
+            <input id="groupCount" type="number" min="1" max="12" value="5" />
+          </div>
+          <div class="field" style="max-width: 160px">
+            <label for="colorsPerGroup">Colors / Group</label>
+            <input
+              id="colorsPerGroup"
+              type="number"
+              min="2"
+              max="24"
+              value="10"
+            />
+          </div>
+          <div class="field" style="max-width: 160px">
+            <label for="rangeMode">Preset Pick Mode</label>
+            <select
+              id="rangeMode"
+              class="mini-select"
+              title="How to pick range presets"
+            >
+              <option value="random">Random presets</option>
+              <option value="cycle">Cycle presets</option>
+            </select>
+          </div>
+          <div class="field" style="max-width: 170px">
+            <label for="lockBehavior">Refresh Action</label>
+            <select
+              id="lockBehavior"
+              class="mini-select"
+              title="What refresh affects"
+            >
+              <option value="all">Regenerate all</option>
+              <option value="unlocked">Only unlocked groups</option>
+            </select>
+          </div>
+          <div class="secondary-actions">
+            <button id="refreshBtn" title="Generate groups based on settings">
+              🔁 Refresh
+            </button>
+            <button id="copyBtn" title="Copy HEX array for all groups">
+              📋 Copy HEX
+            </button>
+            <button id="exportJsonBtn" title="Export full palette JSON">
+              💾 Export JSON
+            </button>
+            <button id="resetBtn" title="Reset all settings">♻️ Reset</button>
+          </div>
+        </div>
+      </header>
+
+      <p class="hint">
+        Click <b>Refresh</b> to generate 5 new groups (each with 10 colors)
+        sampled in <b>HSL</b> from bounded ranges. Use <b>Copy HEX Array</b> to
+        copy everything as a single flat JS array of hex color strings.
+      </p>
+
+      <div id="grid" class="grid" aria-live="polite"></div>
+
+      <textarea
+        id="payload"
+        readonly
+        spellcheck="false"
+        aria-label="Copied JS array preview"
+      ></textarea>
+    </div>
+
+    <script>
+      // =============================
+      //  Utilities (with debug logs)
+      // =============================
+
+      /** Random float in [min, max] */
+      function rand(min, max) {
+        const v = Math.random() * (max - min) + min;
+        console.log("[rand]", { min, max, v });
+        return v;
+      }
+
+      /** Clamp number between [lo, hi] */
+      function clamp(x, lo, hi) {
+        if (x < lo) return lo;
+        if (x > hi) return hi;
+        return x;
+      }
+
+      /**
+       * Convert HSL (deg, %, %) to RGB [0..255] ints
+       * h in [0..360), s,l in [0..100]
+       */
+      function hslToRgb(h, s, l) {
+        // Normalize
+        h = ((h % 360) + 360) % 360;
+        s = clamp(s, 0, 100) / 100;
+        l = clamp(l, 0, 100) / 100;
+
+        const c = (1 - Math.abs(2 * l - 1)) * s;
+        const hp = h / 60;
+        const x = c * (1 - Math.abs((hp % 2) - 1));
+        let r1 = 0,
+          g1 = 0,
+          b1 = 0;
+
+        if (hp < 1) {
+          r1 = c;
+          g1 = x;
+          b1 = 0;
+        } else if (hp < 2) {
+          r1 = x;
+          g1 = c;
+          b1 = 0;
+        } else if (hp < 3) {
+          r1 = 0;
+          g1 = c;
+          b1 = x;
+        } else if (hp < 4) {
+          r1 = 0;
+          g1 = x;
+          b1 = c;
+        } else if (hp < 5) {
+          r1 = x;
+          g1 = 0;
+          b1 = c;
+        } else {
+          r1 = c;
+          g1 = 0;
+          b1 = x;
+        }
+
+        const m = l - c / 2;
+        const r = Math.round((r1 + m) * 255);
+        const g = Math.round((g1 + m) * 255);
+        const b = Math.round((b1 + m) * 255);
+
+        const rgb = [clamp(r, 0, 255), clamp(g, 0, 255), clamp(b, 0, 255)];
+        console.log("[hslToRgb]", { h, s, l, rgb });
+        return rgb;
+      }
+
+      /** Format helpers */
+      const fmt = {
+        hsl: (h, s, l) =>
+          `hsl(${Math.round(h)} ${Math.round(s)}% ${Math.round(l)}%)`,
+        rgb: (r, g, b) => `rgb(${r}, ${g}, ${b})`,
+        hex: (r, g, b) =>
+          "#" +
+          [r, g, b]
+            .map((v) => v.toString(16).padStart(2, "0"))
+            .join("")
+            .toUpperCase(),
+      };
+
+      // ====================================
+      //  Preset bounded HSL range selection
+      // ====================================
+      // Each preset bounds hue/sat/lightness. Hue supports wraparound via either [min,max] or array of segments.
+      const PRESETS = [
+        {
+          name: "Vibrant Warm",
+          hue: [
+            { min: 0, max: 40 },
+            { min: 350, max: 360 },
+          ], // reds/oranges
+          sat: { min: 60, max: 95 },
+          lig: { min: 45, max: 65 },
+        },
+        {
+          name: "Cool Ocean",
+          hue: [{ min: 180, max: 220 }],
+          sat: { min: 45, max: 85 },
+          lig: { min: 40, max: 65 },
+        },
+        {
+          name: "Forest",
+          hue: [{ min: 90, max: 150 }],
+          sat: { min: 35, max: 75 },
+          lig: { min: 30, max: 58 },
+        },
+        {
+          name: "Pastel",
+          hue: [{ min: 0, max: 360 }],
+          sat: { min: 25, max: 55 },
+          lig: { min: 72, max: 90 },
+        },
+        {
+          name: "Neon",
+          hue: [{ min: 0, max: 360 }],
+          sat: { min: 85, max: 100 },
+          lig: { min: 45, max: 60 },
+        },
+        {
+          name: "Midnight",
+          hue: [{ min: 200, max: 260 }],
+          sat: { min: 20, max: 45 },
+          lig: { min: 20, max: 35 },
+        },
+        {
+          name: "Sunset",
+          hue: [
+            { min: 15, max: 30 },
+            { min: 330, max: 350 },
+          ],
+          sat: { min: 60, max: 90 },
+          lig: { min: 45, max: 70 },
+        },
+        {
+          name: "Candy",
+          hue: [
+            { min: 300, max: 360 },
+            { min: 0, max: 20 },
+          ],
+          sat: { min: 60, max: 95 },
+          lig: { min: 60, max: 80 },
+        },
+        // Added broader coverage palettes
+        {
+          name: "Earth Tones",
+          // browns/ochres/olive range
+          hue: [
+            { min: 20, max: 55 }, // ochre / amber / brownish
+            { min: 60, max: 95 }, // olive / muted greens
+          ],
+          sat: { min: 25, max: 55 },
+          lig: { min: 30, max: 55 },
+        },
+        {
+          name: "Deep Jewel",
+          // saturated but darker jewel like emerald, sapphire, amethyst
+          hue: [
+            { min: 120, max: 170 }, // emerald / teal
+            { min: 190, max: 250 }, // blue / indigo
+            { min: 270, max: 300 }, // violet / amethyst
+          ],
+          sat: { min: 55, max: 90 },
+          lig: { min: 25, max: 45 },
+        },
+        {
+          name: "Full Wheel 50/50",
+          // Uniform sampling across all hues with moderate saturation & lightness
+          hue: [{ min: 0, max: 360 }],
+          sat: { min: 50, max: 50 },
+          lig: { min: 50, max: 50 },
+        },
+      ];
+
+      /**
+       * Pick a hue according to preset's (possibly multi-segment) hue bounds.
+       */
+      function pickHue(hueSpec) {
+        if (!Array.isArray(hueSpec) || hueSpec.length === 0) {
+          console.warn("[pickHue] Invalid hueSpec; defaulting to 0..360");
+          return rand(0, 360);
+        }
+        const seg = hueSpec[Math.floor(rand(0, hueSpec.length))];
+        const h = rand(seg.min, seg.max);
+        console.log("[pickHue]", { seg, h });
+        return h;
+      }
+
+      function pickSat(spec) {
+        return rand(spec.min, spec.max);
+      }
+
+      function pickLig(spec) {
+        return rand(spec.min, spec.max);
+      }
+
+      // ====================================
+      //  Palette generation + rendering
+      // ====================================
+
+      /** Current palettes in nested structure for copy/export */
+      let currentPalettes = []; // [{ name, colors: [...], config:{hue:[], sat:{min,max}, lig:{min,max}}, locked:boolean, id:number }]
+      let groupCounter = 0;
+
+      function generateGroup(preset, count = 10, existingCfg) {
+        const colors = [];
+        for (let i = 0; i < count; i++) {
+          const h = pickHue(preset.hue);
+          const s = pickSat(preset.sat);
+          const l = pickLig(preset.lig);
+          const [r, g, b] = hslToRgb(h, s, l);
+          const hex = fmt.hex(r, g, b);
+          colors.push({ h, s, l, r, g, b, hex });
+        }
+        console.log("[generateGroup]", { preset: preset.name, count, colors });
+        return {
+          id: existingCfg?.id ?? ++groupCounter,
+          name: preset.name,
+          colors,
+          config: {
+            hue: JSON.parse(JSON.stringify(preset.hue)),
+            sat: { ...preset.sat },
+            lig: { ...preset.lig },
+          },
+          locked: existingCfg?.locked || false,
+        };
+      }
+
+      function choosePresets(mode = "random", howMany = 5) {
+        const list = [];
+        if (mode === "cycle") {
+          // Deterministic walk through presets
+          const t = Date.now();
+          const start = Math.floor((t / 1000) % PRESETS.length);
+          for (let i = 0; i < howMany; i++) {
+            list.push(PRESETS[(start + i) % PRESETS.length]);
+          }
+          return list;
+        }
+        // random (no strict uniqueness to keep code simple)
+        for (let i = 0; i < howMany; i++) {
+          list.push(PRESETS[Math.floor(rand(0, PRESETS.length))]);
+        }
+        return list;
+      }
+
+      function regenerateAllOrUnlocked() {
+        const lockBehavior = document.getElementById("lockBehavior").value;
+        currentPalettes = currentPalettes.map((g) => {
+          if (lockBehavior === "unlocked" && g.locked) return g; // keep
+          const presetLike = {
+            name: g.name,
+            hue: g.config.hue,
+            sat: g.config.sat,
+            lig: g.config.lig,
+          };
+          return generateGroup(presetLike, getColorsPerGroup(), g);
+        });
+        render();
+        updatePayloadPreview();
+      }
+
+      function generateGroupsFresh() {
+        const mode = document.getElementById("rangeMode").value;
+        const howMany = getGroupCount();
+        const presets = choosePresets(mode, howMany);
+        currentPalettes = presets.map((p) =>
+          generateGroup(p, getColorsPerGroup())
+        );
+        render();
+        updatePayloadPreview();
+      }
+
+      function getGroupCount() {
+        return parseInt(document.getElementById("groupCount").value, 10) || 5;
+      }
+      function getColorsPerGroup() {
+        return (
+          parseInt(document.getElementById("colorsPerGroup").value, 10) || 10
+        );
+      }
+
+      function render() {
+        const grid = document.getElementById("grid");
+        if (!grid) {
+          console.error("[render] Missing #grid");
+          return;
+        }
+        grid.innerHTML = "";
+
+        currentPalettes.forEach((group, gi) => {
+          const groupEl = document.createElement("section");
+          groupEl.className = "group";
+
+          const header = document.createElement("div");
+          header.className = "group-header";
+
+          const title = document.createElement("div");
+          title.className = "group-title";
+          title.textContent = `${group.name} — Group ${gi + 1}`;
+          header.appendChild(title);
+
+          const chip = document.createElement("div");
+          chip.className = "chip";
+          chip.textContent = `H:${showHue(group.config.hue)}  S:${
+            group.config.sat.min
+          }-${group.config.sat.max}%  L:${group.config.lig.min}-${
+            group.config.lig.max
+          }%`;
+          header.appendChild(chip);
+
+          const swatches = document.createElement("div");
+          swatches.className = "swatches";
+
+          group.colors.forEach((c, ci) => {
+            const sw = document.createElement("div");
+            sw.className = "swatch";
+
+            const color = document.createElement("div");
+            color.className = "color";
+            color.style.background = fmt.hsl(c.h, c.s, c.l);
+            color.title = `HSL ${Math.round(c.h)} ${Math.round(
+              c.s
+            )}% ${Math.round(c.l)}%`;
+
+            const meta = document.createElement("div");
+            meta.className = "meta";
+            const left = document.createElement("span");
+            left.className = "tag";
+            left.textContent = fmt.hex(c.r, c.g, c.b);
+            const right = document.createElement("span");
+            right.className = "tag";
+            right.textContent = `${c.r},${c.g},${c.b}`;
+            meta.append(left, right);
+
+            sw.append(color, meta);
+            swatches.appendChild(sw);
+          });
+
+          // Config UI
+          const config = document.createElement("div");
+          config.className = "group-config";
+          // Row 1: preset select, lock, regenerate, delete
+          const row1 = document.createElement("div");
+          row1.className = "row";
+          const presetSelect = document.createElement("select");
+          presetSelect.className = "mini-select";
+          PRESETS.forEach((p) => {
+            const opt = document.createElement("option");
+            opt.value = p.name;
+            opt.textContent = p.name;
+            if (p.name === group.name) opt.selected = true;
+            presetSelect.appendChild(opt);
+          });
+          presetSelect.addEventListener("change", () => {
+            const p = PRESETS.find((x) => x.name === presetSelect.value);
+            if (!p) return;
+            group.name = p.name;
+            group.config.hue = JSON.parse(JSON.stringify(p.hue));
+            group.config.sat = { ...p.sat };
+            group.config.lig = { ...p.lig };
+            regenerateSingle(group.id);
+          });
+          row1.appendChild(presetSelect);
+          const lockBtn = document.createElement("button");
+          lockBtn.className = "lock-btn";
+          lockBtn.dataset.locked = group.locked ? "true" : "false";
+          lockBtn.innerHTML = group.locked ? "🔒 Locked" : "🔓 Unlocked";
+          lockBtn.addEventListener("click", () => {
+            group.locked = !group.locked;
+            lockBtn.dataset.locked = group.locked ? "true" : "false";
+            lockBtn.innerHTML = group.locked ? "🔒 Locked" : "🔓 Unlocked";
+          });
+          row1.appendChild(lockBtn);
+          const regenBtn = document.createElement("button");
+          regenBtn.className = "btn-small";
+          regenBtn.textContent = "↻";
+          regenBtn.title = "Regenerate group";
+          regenBtn.addEventListener("click", () => {
+            regenerateSingle(group.id);
+            flash(regenBtn);
+          });
+          row1.appendChild(regenBtn);
+          const delBtn = document.createElement("button");
+          delBtn.className = "btn-small danger";
+          delBtn.textContent = "✖";
+          delBtn.title = "Delete group";
+          delBtn.addEventListener("click", () => {
+            currentPalettes = currentPalettes.filter((g) => g.id !== group.id);
+            render();
+            updatePayloadPreview();
+          });
+          row1.appendChild(delBtn);
+          const copyThis = document.createElement("button");
+          copyThis.className = "btn-small";
+          copyThis.textContent = "Copy";
+          copyThis.title = "Copy group HEX array";
+          copyThis.addEventListener("click", async () => {
+            const arr = group.colors.map((c) => c.hex);
+            const text = JSON.stringify(arr, null, 2);
+            await navigator.clipboard.writeText(text);
+            flash(copyThis);
+          });
+          row1.appendChild(copyThis);
+          config.appendChild(row1);
+          // Row 2: Ranges (Hue can't easily be multi segment edit here - show min/max across first segment for simplicity)
+          const row2 = document.createElement("div");
+          row2.className = "row ranges";
+          // Hue editing: treat as first segment only for UI simplicity
+          const hueSeg = Array.isArray(group.config.hue)
+            ? group.config.hue[0]
+            : { min: 0, max: 360 };
+          const hueWrap = document.createElement("div");
+          hueWrap.className = "range-pair";
+          const hueLabel = document.createElement("label");
+          hueLabel.textContent = "Hue";
+          hueLabel.style.fontSize = "10px";
+          hueWrap.appendChild(hueLabel);
+          const hueMin = document.createElement("input");
+          hueMin.type = "number";
+          hueMin.value = Math.round(hueSeg.min);
+          hueMin.min = 0;
+          hueMin.max = 360;
+          const hueMax = document.createElement("input");
+          hueMax.type = "number";
+          hueMax.value = Math.round(hueSeg.max);
+          hueMax.min = 0;
+          hueMax.max = 360;
+          [hueMin, hueMax].forEach((inp) =>
+            inp.addEventListener("change", () => {
+              hueSeg.min = Math.min(
+                parseFloat(hueMin.value),
+                parseFloat(hueMax.value)
+              );
+              hueSeg.max = Math.max(
+                parseFloat(hueMin.value),
+                parseFloat(hueMax.value)
+              );
+              regenerateSingle(group.id);
+            })
+          );
+          hueWrap.append(hueMin, hueMax);
+          row2.appendChild(hueWrap);
+          // Sat
+          const satWrap = document.createElement("div");
+          satWrap.className = "range-pair";
+          const satLabel = document.createElement("label");
+          satLabel.textContent = "Sat%";
+          satLabel.style.fontSize = "10px";
+          satWrap.appendChild(satLabel);
+          const satMin = document.createElement("input");
+          satMin.type = "number";
+          satMin.value = group.config.sat.min;
+          satMin.min = 0;
+          satMin.max = 100;
+          const satMax = document.createElement("input");
+          satMax.type = "number";
+          satMax.value = group.config.sat.max;
+          satMax.min = 0;
+          satMax.max = 100;
+          [satMin, satMax].forEach((inp) =>
+            inp.addEventListener("change", () => {
+              group.config.sat.min = Math.min(
+                parseFloat(satMin.value),
+                parseFloat(satMax.value)
+              );
+              group.config.sat.max = Math.max(
+                parseFloat(satMin.value),
+                parseFloat(satMax.value)
+              );
+              regenerateSingle(group.id);
+            })
+          );
+          satWrap.append(satMin, satMax);
+          row2.appendChild(satWrap);
+          // Lig
+          const ligWrap = document.createElement("div");
+          ligWrap.className = "range-pair";
+          const ligLabel = document.createElement("label");
+          ligLabel.textContent = "Lig%";
+          ligLabel.style.fontSize = "10px";
+          ligWrap.appendChild(ligLabel);
+          const ligMin = document.createElement("input");
+          ligMin.type = "number";
+          ligMin.value = group.config.lig.min;
+          ligMin.min = 0;
+          ligMin.max = 100;
+          const ligMax = document.createElement("input");
+          ligMax.type = "number";
+          ligMax.value = group.config.lig.max;
+          ligMax.min = 0;
+          ligMax.max = 100;
+          [ligMin, ligMax].forEach((inp) =>
+            inp.addEventListener("change", () => {
+              group.config.lig.min = Math.min(
+                parseFloat(ligMin.value),
+                parseFloat(ligMax.value)
+              );
+              group.config.lig.max = Math.max(
+                parseFloat(ligMin.value),
+                parseFloat(ligMax.value)
+              );
+              regenerateSingle(group.id);
+            })
+          );
+          ligWrap.append(ligMin, ligMax);
+          row2.appendChild(ligWrap);
+          config.appendChild(row2);
+
+          groupEl.append(header, swatches, config);
+          grid.appendChild(groupEl);
+        });
+      }
+
+      function showHue(spec) {
+        if (!Array.isArray(spec)) return "0-360";
+        return spec.map((s) => `${s.min}-${s.max}°`).join(" ∪ ");
+      }
+
+      // =============================
+      //  Clipboard + payload preview
+      // =============================
+
+      function buildNestedRgbArrayLiteral() {
+        // Nested as groups -> colors -> [r,g,b]
+        const data = currentPalettes.map((g) =>
+          g.colors.map((c) => [c.r, c.g, c.b])
+        );
+        // Annotated JS literal for easy paste
+        const lines = [];
+        lines.push("/* Generated by HSL Palette Generator (groups × 10) */");
+        lines.push("const palettes = [");
+        currentPalettes.forEach((g, gi) => {
+          lines.push(`  // Group ${gi + 1}: ${g.name}`);
+          const inner = g.colors
+            .map((c) => `[${c.r},${c.g},${c.b}]`)
+            .join(", ");
+          lines.push(`  [ ${inner} ],`);
+        });
+        lines.push("];");
+        lines.push("");
+        lines.push("export default palettes;");
+        return lines.join("\n");
+      }
+
+      async function copyAllRgb() {
+        const text = buildNestedRgbArrayLiteral();
+        try {
+          await navigator.clipboard.writeText(text);
+          console.log("[copy:all] Copied nested RGB array.");
+        } catch (err) {
+          console.error(
+            "[copy:all] Clipboard failed; falling back to textarea.",
+            err
+          );
+          const ta = document.getElementById("payload");
+          if (ta) {
+            ta.select();
+            document.execCommand("copy");
+          }
+        }
+      }
+
+      // Missing earlier: copy all HEX (flat) referenced by button
+      async function copyAllHex() {
+        const arr = currentPalettes.flatMap((g) => g.colors.map((c) => c.hex));
+        const text = JSON.stringify(arr, null, 2);
+        try {
+          await navigator.clipboard.writeText(text);
+          console.log("[copy:hex] Copied flat HEX array.");
+        } catch (err) {
+          console.error("[copy:hex] Clipboard failed", err);
+        }
+      }
+
+      function updatePayloadPreview() {
+        const ta = document.getElementById("payload");
+        if (!ta) return;
+        ta.value = buildNestedRgbArrayLiteral();
+      }
+
+      function flash(btn) {
+        const orig = btn.style.boxShadow;
+        btn.style.boxShadow = "0 0 0 2px rgba(56,189,248,.8)";
+        setTimeout(() => {
+          btn.style.boxShadow = orig;
+        }, 180);
+      }
+
+      // =============================
+      //  Wire up UI
+      // =============================
+      function regenerateSingle(id) {
+        const idx = currentPalettes.findIndex((g) => g.id === id);
+        if (idx === -1) return;
+        const g = currentPalettes[idx];
+        const pseudoPreset = {
+          name: g.name,
+          hue: g.config.hue,
+          sat: g.config.sat,
+          lig: g.config.lig,
+        };
+        currentPalettes[idx] = generateGroup(
+          pseudoPreset,
+          getColorsPerGroup(),
+          g
+        );
+        render();
+        updatePayloadPreview();
+      }
+
+      function exportJson() {
+        const data = currentPalettes.map((g) => ({
+          name: g.name,
+          locked: g.locked,
+          config: g.config,
+          colors: g.colors.map((c) => ({
+            h: c.h,
+            s: c.s,
+            l: c.l,
+            r: c.r,
+            g: c.g,
+            b: c.b,
+            hex: c.hex,
+          })),
+        }));
+        const blob = new Blob([JSON.stringify(data, null, 2)], {
+          type: "application/json",
+        });
+        const a = document.createElement("a");
+        a.download = "palettes.json";
+        a.href = URL.createObjectURL(blob);
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+      }
+
+      function resetAll() {
+        document.getElementById("groupCount").value = 5;
+        document.getElementById("colorsPerGroup").value = 10;
+        document.getElementById("rangeMode").value = "random";
+        document.getElementById("lockBehavior").value = "all";
+        generateGroupsFresh();
+      }
+
+      (function main() {
+        const refreshBtn = document.getElementById("refreshBtn");
+        const copyBtn = document.getElementById("copyBtn");
+        const rangeMode = document.getElementById("rangeMode");
+        const groupCount = document.getElementById("groupCount");
+        const colorsPerGroup = document.getElementById("colorsPerGroup");
+        const exportJsonBtn = document.getElementById("exportJsonBtn");
+        const resetBtn = document.getElementById("resetBtn");
+
+        if (!refreshBtn || !copyBtn || !rangeMode) {
+          console.error("[init] Missing UI elements; aborting.");
+          return;
+        }
+
+        refreshBtn.addEventListener("click", () => {
+          console.log("[ui] Refresh clicked.");
+          // If group count changed from current length -> rebuild fresh; else regenerate respecting lock behavior
+          if (getGroupCount() !== currentPalettes.length) {
+            generateGroupsFresh();
+          } else {
+            regenerateAllOrUnlocked();
+          }
+          flash(refreshBtn);
+        });
+
+        copyBtn.addEventListener("click", async () => {
+          console.log("[ui] Copy-all clicked.");
+          await copyAllHex();
+          flash(copyBtn);
+        });
+
+        exportJsonBtn.addEventListener("click", () => {
+          exportJson();
+          flash(exportJsonBtn);
+        });
+        resetBtn.addEventListener("click", () => {
+          resetAll();
+          flash(resetBtn);
+        });
+
+        rangeMode.addEventListener("change", () => {
+          console.log("[ui] Range mode:", rangeMode.value);
+          generateGroupsFresh();
+        });
+        groupCount.addEventListener("change", () => {
+          generateGroupsFresh();
+        });
+        colorsPerGroup.addEventListener("change", () => {
+          regenerateAllOrUnlocked();
+        });
+
+        console.log("[init] Generating initial groups.");
+        generateGroupsFresh();
+      })();
+    </script>
+  </body>
+</html>
