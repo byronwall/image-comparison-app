@@ -1,0 +1,45 @@
+<html>
+  <head>
+    <title>CSS Layer Test</title>
+    <style>
+      @layer base, theme, override;
+
+      @layer base {
+        body {
+          background-color: lightblue;
+        }
+      }
+
+      @layer theme {
+        body {
+          background-color: lightgreen;
+        }
+        div.present {
+          border: 2px solid black;
+          padding: 10px;
+          margin: 10px;
+        }
+
+        div.not-present {
+          border: 2px dashed red;
+          padding: 10px;
+          margin: 10px;
+        }
+      }
+
+      @layer override {
+        body {
+          background-color: lightcoral;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <h1>CSS Layer Test</h1>
+    <div class="present">This div should have a solid black border.</div>
+
+    <p>
+      If the background is lightcoral, the override layer is working correctly.
+    </p>
+  </body>
+</html>

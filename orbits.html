@@ -1,0 +1,648 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Elliptical vs Circular Orbit — Earth around the Sun</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root {
+      --bg: #0b1020;
+      --fg: #e8ecf4;
+      --muted: #a9b3c7;
+      --accent: #8ad;
+      --accent2: #f6b26b;
+      --ellipse: #74ff9f;
+      --circle: #84a9ff;
+      --grid: #22304a;
+      --sun: #ffd166;
+      --peri: #ff6961;
+      --aphe: #6aa84f;
+    }
+    html, body {
+      height: 100%;
+      margin: 0;
+      background: var(--bg);
+      color: var(--fg);
+      font: 14px/1.4 system-ui, -apple-system, Segoe UI, Roboto, Inter, Arial, sans-serif;
+    }
+    header {
+      padding: 16px 20px;
+      border-bottom: 1px solid #162238;
+    }
+    h1 { margin: 0 0 4px; font-weight: 700; font-size: 18px; }
+    .wrap {
+      display: grid;
+      grid-template-columns: 1fr 360px;
+      gap: 16px;
+      padding: 16px;
+    }
+    .panel {
+      background: #0e1528;
+      border: 1px solid #162238;
+      border-radius: 12px;
+      padding: 12px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+    }
+    .row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    .title {
+      font-weight: 600; margin: 6px 0 10px; color: var(--muted);
+      letter-spacing: .02em; text-transform: uppercase; font-size: 12px;
+    }
+    .legend {
+      display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin: 6px 0 8px;
+    }
+    .chip { display: inline-flex; align-items: center; gap: 6px; }
+    .dot {
+      width: 12px; height: 12px; border-radius: 50%;
+      box-shadow: 0 0 12px rgba(255,255,255,0.15) inset;
+      outline: 1px solid rgba(255,255,255,0.06);
+    }
+    .dot.ellipse { background: var(--ellipse); opacity: 0.4 }
+    .dot.circle { background: var(--circle); }
+    .dot.sun { background: var(--sun); }
+    .dot.peri { background: var(--peri); }
+    .dot.aphe { background: var(--aphe); }
+
+    svg {
+      width: 100%; height: 560px; background: radial-gradient(1200px 560px at 50% 50%, rgba(255,255,255,0.02), transparent 60%);
+      border-radius: 10px; display: block;
+    }
+    .grid line { stroke: var(--grid); stroke-width: 1; }
+    /* Orbit styling: non-scaling stroke so thickness independent of world scaling */
+    .orbit-ellipse, .orbit-circle { 
+      fill: none; 
+      stroke-width: 2; 
+      vector-effect: non-scaling-stroke; 
+      stroke-linejoin: round; 
+      stroke-linecap: round; 
+      stroke-opacity: 0.55; /* see-through */
+    }
+    .orbit-ellipse { stroke: var(--ellipse); }
+    .orbit-circle  { stroke: var(--circle); stroke-dasharray: 5 7; }
+    .sun { stroke: rgba(0,0,0,0.25); stroke-width: 1; fill: var(--sun); }
+    .marker { stroke: rgba(0,0,0,0.25); stroke-width: 1; }
+    /* Orbit point labels (non-scaling via inverse transform in JS) */
+    .label {
+      font-size: 14px; /* slightly larger for legibility */
+      font-weight: 600;
+      fill: var(--fg); /* brighter than muted for contrast */
+      user-select: none;
+      pointer-events: none; /* don't block dragging */
+      paint-order: stroke fill; /* ensure stroke rendered beneath fill */
+      stroke: rgba(11,16,32,0.85); /* background color outline */
+      stroke-width: 3px; /* visual halo thickness */
+      stroke-linejoin: round;
+    }
+    /* Zoom viewport box shown on main SVG */
+    .zoom-box {
+      fill: rgba(138,173,221,0.08);
+      stroke: var(--accent);
+      stroke-width: 1.2;
+      stroke-dasharray: 4 4;
+      vector-effect: non-scaling-stroke;
+      pointer-events: none;
+    }
+    .dragging .zoom-box { stroke: var(--accent2); }
+    .inset {
+      height: 560px; display: grid; grid-template-rows: min-content 1fr min-content; gap: 8px;
+    }
+    .zoom-ui { display:flex; gap:8px; align-items:center; margin-bottom:4px; }
+    .zoom-ui button { background:#162238; color:var(--fg); border:1px solid #243750; border-radius:6px; padding:4px 10px; font-weight:600; cursor:pointer; font-size:13px; line-height:1; }
+    .zoom-ui button:hover { background:#1d2b42; }
+    .zoom-ui button:active { background:#132033; }
+    .zoom-ui input[type=range] { flex:1; accent-color: var(--accent); height:28px; }
+    .zoom-ui input[type=number] { width:70px; background:#162238; border:1px solid #243750; border-radius:6px; color:var(--fg); padding:4px 6px; font-size:13px; }
+    .zoom-ui input[type=number]:focus { outline:1px solid var(--accent); }
+    .muted b { color: var(--fg); font-weight:600; }
+    .note { max-width:560px; }
+    /* Subtle visual polish */
+    svg { outline:none; }
+  /* dash already defined above */
+    .grid line { stroke: #1a2536; }
+    .crosshair line { stroke: rgba(255,255,255,0.45); }
+    table {
+      width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 13px;
+    }
+    th, td {
+      text-align: left; padding: 6px 8px; border-bottom: 1px solid #162238;
+      vertical-align: top;
+    }
+    th { color: var(--muted); font-weight: 600; }
+    .muted { color: var(--muted); }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    footer { padding: 12px 16px; color: var(--muted); }
+    .note { color: var(--muted); font-size: 12px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Earth’s Elliptical Orbit vs Circular Approximation</h1>
+    <div class="legend">
+      <span class="chip"><span class="dot ellipse"></span> Elliptical (true, Sun at focus)</span>
+      <span class="chip"><span class="dot circle"></span> Circular approximation (r = 1 AU)</span>
+      <span class="chip"><span class="dot sun"></span> Sun (focus)</span>
+      <span class="chip"><span class="dot peri"></span> Perihelion</span>
+      <span class="chip"><span class="dot aphe"></span> Aphelion</span>
+    </div>
+  </header>
+
+  <div class="wrap">
+    <!-- LEFT: Main side-by-side visuals -->
+    <div class="panel">
+      <div class="row">
+        <div>
+          <div class="title">Full Orbits (to scale in AU)</div>
+          <svg id="mainSvg" viewBox="0 0 800 800" aria-label="Main orbit comparison">
+            <!-- grid -->
+            <g class="grid" id="grid"></g>
+            <!-- world space group: centered + AU scaling -->
+            <g id="world"></g>
+            <!-- overlay for zoom box (screen space) -->
+            <g id="overlay"></g>
+          </svg>
+        </div>
+        <div class="inset">
+          <div class="title">Zoomed Comparison (around aphelion)</div>
+          <svg id="zoomSvg" viewBox="0 0 600 420" aria-label="Zoomed orbit comparison">
+            <g class="grid" id="zgrid"></g>
+            <g id="zworld"></g>
+          </svg>
+
+          <div>
+            <div class="zoom-ui" aria-label="Zoom controls">
+              <button id="zoomOut" type="button" aria-label="Zoom out">−</button>
+              <input id="zoomSlider" type="range" min="0" max="1000" step="1" value="0" aria-label="Zoom slider" />
+              <button id="zoomIn" type="button" aria-label="Zoom in">+</button>
+              <input id="zoomInput" type="number" min="1" max="1200" step="1" value="1" aria-label="Zoom numeric" />
+            </div>
+            <div class="muted">Zoom: <b><span id="zoomX">1×</span></b> &nbsp; | &nbsp; Separation at aphelion: <span id="sepPx">—</span> px</div>
+            <div class="note">The scale uses a logarithmic mapping for finer control at small zoom. Drag the slider or use ± buttons / number field. Differences become visible once separation exceeds ~1–2 pixels.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: Facts & comparison -->
+    <div class="panel">
+      <div class="title">Key Numbers</div>
+      <table>
+        <thead>
+          <tr>
+            <th>Quantity</th>
+            <th>Value</th>
+          </tr>
+        </thead>
+        <tbody id="facts">
+          <!-- filled by JS -->
+        </tbody>
+      </table>
+
+      <div class="title" style="margin-top:14px;">Interpretation</div>
+      <p class="muted">
+        Earth’s orbit is very close to a circle (eccentricity <span class="mono">e = 0.0167</span>), but truly an ellipse with the Sun at one focus.
+        The **maximum deviation** from a 1&nbsp;AU circle is <span class="mono">e × a</span> &nbsp;≈&nbsp; 0.0167&nbsp;AU ≈ 2.5 million km—small relative to 1 AU.
+      </p>
+      <p class="muted">
+        Use the zoom to see where the green ellipse (true) diverges from the dashed blue circle (approximation).
+        At aphelion, the ellipse sits **outside** the circle by <span class="mono">+e·a</span>; at perihelion, it’s **inside** by <span class="mono">−e·a</span>.
+      </p>
+      <p class="note">All geometry is computed numerically from the orbital polar equation with the Sun at the focus: <span class="mono">r(ν) = a(1 − e²)/(1 + e·cos ν)</span>.</p>
+    </div>
+  </div>
+
+  <footer class="muted">
+    Source geometry: a = 1 AU, e = 0.0167, b = a·√(1 − e²). Sun at focus, perihelion at ν = 0, aphelion at ν = π.
+  </footer>
+
+  <script>
+    // === Constants (AU-scale model) ===
+    const AU_KM = 149_597_870.7;       // 1 AU in km
+    const a = 1.0;                     // semi-major axis (AU)
+    const e = 0.0167;                  // eccentricity
+    const b = a * Math.sqrt(1 - e*e);  // semi-minor axis (AU)
+    const c = a * e;                   // focus distance from ellipse center (AU)
+    const N = 720;                     // sampling resolution (angles)
+
+    // For the main scene, 1 AU = pxPerAU pixels (initial)
+    const main = {
+      svg: document.getElementById('mainSvg'),
+      world: document.getElementById('world'),
+      grid: document.getElementById('grid'),
+      size: 800,
+      pxPerAU: 260, // tuned so 1 AU ~ 260px
+      center: { x: 400, y: 400 }
+    };
+
+    const zoom = {
+      svg: document.getElementById('zoomSvg'),
+      world: document.getElementById('zworld'),
+      grid: document.getElementById('zgrid'),
+      width: 600,
+      height: 420,
+      pxPerAUBase: 260, // base, multiplied by slider
+      center: { x: 300, y: 210 },
+      slider: document.getElementById('zoomSlider'),
+      input: document.getElementById('zoomInput'),
+      btnIn: document.getElementById('zoomIn'),
+      btnOut: document.getElementById('zoomOut'),
+      zoomXEl: document.getElementById('zoomX'),
+      sepPxEl: document.getElementById('sepPx')
+    };
+
+    // Zoom focus (world coordinates, AU) controls where the zoom view centers on.
+    // Initial focus at aphelion (ellipse far point) so previous behavior preserved.
+  // zoomFocus defined later in init (computed from sampled ellipse to ensure exact leftmost point)
+  let zoomFocus = { x: 0, y: 0 };
+    const overlay = document.getElementById('overlay');
+
+    // Helpers for coordinate mapping (screen px -> world AU for main SVG)
+    function screenToWorld(svg, evt){
+      const pt = svg.createSVGPoint();
+      pt.x = evt.clientX; pt.y = evt.clientY;
+      const ctm = svg.getScreenCTM();
+      if(!ctm) return {x:0,y:0};
+      const inv = ctm.inverse();
+      const sp = pt.matrixTransform(inv); // in SVG viewBox space (0..800)
+      // Convert to world: undo translate(center) then scale
+      const x = (sp.x - main.center.x) / main.pxPerAU;
+      const y = -(sp.y - main.center.y) / main.pxPerAU;
+      return { x, y };
+    }
+
+    console.log("[init] a =", a, "AU; e =", e, "b =", b, "AU; c =", c, "AU");
+
+    // === Utility: world <-> screen transforms ===
+    function worldTransform(g, center, pxPerAU) {
+      // Translate to screen center, flip Y so +Y up, and scale AU->px
+      g.setAttribute('transform', `translate(${center.x}, ${center.y}) scale(${pxPerAU}, ${-pxPerAU})`);
+    }
+
+    // === Draw background grid in AU ===
+    function drawGrid(g, sizePx, center, pxPerAU, stepAU = 0.5) {
+      g.innerHTML = '';
+      const half = sizePx / 2;
+      const maxAU = Math.ceil((half / pxPerAU) / stepAU) * stepAU;
+      for (let au = -maxAU; au <= maxAU; au += stepAU) {
+        // vertical
+        const x = center.x + au * pxPerAU;
+        const v = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        v.setAttribute('x1', x); v.setAttribute('x2', x);
+        v.setAttribute('y1', center.y - half); v.setAttribute('y2', center.y + half);
+        g.appendChild(v);
+        // horizontal
+        const y = center.y + au * pxPerAU;
+        const h = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        h.setAttribute('x1', center.x - half); h.setAttribute('x2', center.x + half);
+        h.setAttribute('y1', y); h.setAttribute('y2', y);
+        g.appendChild(h);
+      }
+    }
+
+    // === Orbit sampling: true ellipse with Sun at focus ===
+    function sampleTrueOrbit(a, e, n) {
+      // r(ν) = a(1 - e^2) / (1 + e cos ν), origin at the focus (Sun)
+      const pts = [];
+      for (let i = 0; i <= n; i++) {
+        const nu = (i / n) * Math.PI * 2;
+        const r = a * (1 - e*e) / (1 + e * Math.cos(nu));
+        pts.push({ x: r * Math.cos(nu), y: r * Math.sin(nu) });
+      }
+      return pts;
+    }
+
+    // Circle (approximation) centered on Sun
+    function sampleCircle(radius, n) {
+      const pts = [];
+      for (let i = 0; i <= n; i++) {
+        const t = (i / n) * Math.PI * 2;
+        pts.push({ x: radius * Math.cos(t), y: radius * Math.sin(t) });
+      }
+      return pts;
+    }
+
+    function toPath(pts) {
+      // Remove duplicate closing point if present to prevent sharp miter artifacts on closure
+      if (pts.length > 2) {
+        const first = pts[0];
+        const last = pts[pts.length - 1];
+        if (Math.abs(first.x - last.x) < 1e-9 && Math.abs(first.y - last.y) < 1e-9) {
+          pts = pts.slice(0, -1);
+        }
+      }
+      return "M " + pts.map(p => `${p.x} ${p.y}`).join(" L "); // no implicit close; it's a continuous loop visually
+    }
+
+    // === Draw main scene ===
+    function drawMain() {
+      worldTransform(main.world, main.center, main.pxPerAU);
+      drawGrid(main.grid, main.size, main.center, main.pxPerAU, 0.5);
+
+      main.world.innerHTML = '';
+      if (overlay) overlay.innerHTML='';
+
+  // True ellipse (Sun at focus @ origin). Instead of dense polyline, use native ellipse element for perfect geometry.
+  // Ellipse center (cx,0) where cx = -c because focus at (0,0) and center is left by c.
+  const ellipseEl = document.createElementNS('http://www.w3.org/2000/svg', 'ellipse');
+  ellipseEl.setAttribute('class', 'orbit-ellipse');
+  ellipseEl.setAttribute('cx', -c);
+  ellipseEl.setAttribute('cy', 0);
+  ellipseEl.setAttribute('rx', a);
+  ellipseEl.setAttribute('ry', b);
+  main.world.appendChild(ellipseEl);
+
+  // Circle approximation (r = a) centered on Sun (focus)
+  const circleEl = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+  circleEl.setAttribute('class', 'orbit-circle');
+  circleEl.setAttribute('cx', 0);
+  circleEl.setAttribute('cy', 0);
+  circleEl.setAttribute('r', a);
+  main.world.appendChild(circleEl);
+
+      // Sun marker at focus (0,0)
+      const sun = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      sun.setAttribute('class', 'sun');
+      sun.setAttribute('cx', 0); sun.setAttribute('cy', 0); sun.setAttribute('r', 0.06); // 0.06 AU ~ 15.6M km (just visual)
+      main.world.appendChild(sun);
+
+      // Perihelion (ν=0): (x, y) = (a(1-e), 0)
+      const peri = { x: a*(1 - e), y: 0 };
+      const periDot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      periDot.setAttribute('class', 'marker');
+      periDot.setAttribute('fill', 'var(--peri)');
+      periDot.setAttribute('cx', peri.x); periDot.setAttribute('cy', peri.y); periDot.setAttribute('r', 0.025);
+      main.world.appendChild(periDot);
+
+      // Aphelion (ν=π): (x, y) = (-a(1+e), 0)
+      const aphe = { x: -a*(1 + e), y: 0 };
+      const apheDot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      apheDot.setAttribute('class', 'marker');
+      apheDot.setAttribute('fill', 'var(--aphe)');
+      apheDot.setAttribute('cx', aphe.x); apheDot.setAttribute('cy', aphe.y); apheDot.setAttribute('r', 0.025);
+      main.world.appendChild(apheDot);
+
+      // Labels
+      // Create a non-scaling label in world coordinates.
+      // The parent group is scaled by (pxPerAU, -pxPerAU); applying the inverse
+      // scale here (1/pxPerAU, -1/pxPerAU) cancels both magnification and Y flip
+      // so the text renders at normal CSS pixel size ~12px regardless of zoom scale.
+      const label = (text, x, y) => {
+        const t = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        t.setAttribute('class', 'label');
+        t.setAttribute('x', x);
+        t.setAttribute('y', y);
+        const inv = 1 / main.pxPerAU;
+        t.setAttribute('transform', `scale(${inv}, ${-inv})`);
+        t.textContent = text;
+        return t;
+      };
+  // Sun label
+  main.world.appendChild(label('Sun (focus)', 0.08, -0.1));
+  // Perihelion label on right edge (start anchored)
+  const periLbl = label('Perihelion', peri.x + 0.05, -0.06);
+  periLbl.setAttribute('text-anchor','start');
+  main.world.appendChild(periLbl);
+  // Aphelion label on left edge (end anchored)
+  const apheLbl = label('Aphelion', aphe.x - 0.05, -0.06);
+  apheLbl.setAttribute('text-anchor','end');
+  main.world.appendChild(apheLbl);
+
+      console.log("[drawMain] paths drawn with N =", N);
+    }
+
+    // === Draw zoomed comparison around aphelion ===
+    function drawZoom(zoomX=1) {
+      const pxPerAU = zoom.pxPerAUBase * zoomX;
+      // Instead of static center, translate so zoomFocus appears at zoom.center
+      // Achieve by: translate(center) scale(pxPerAU,-pxPerAU) translate(-focus.x, -focus.y)
+      zoom.world.setAttribute('transform', `translate(${zoom.center.x}, ${zoom.center.y}) scale(${pxPerAU}, ${-pxPerAU}) translate(${-zoomFocus.x}, ${-zoomFocus.y})`);
+      drawGrid(zoom.grid, Math.max(zoom.width, zoom.height), zoom.center, pxPerAU, 0.05 / zoomX);
+
+      zoom.world.innerHTML = '';
+
+  // Re-draw both orbits using primitive shapes (ellipse + circle) for perfect fidelity
+  const ellipseEl = document.createElementNS('http://www.w3.org/2000/svg', 'ellipse');
+  ellipseEl.setAttribute('class', 'orbit-ellipse');
+  ellipseEl.setAttribute('cx', -c);
+  ellipseEl.setAttribute('cy', 0);
+  ellipseEl.setAttribute('rx', a);
+  ellipseEl.setAttribute('ry', b);
+  zoom.world.appendChild(ellipseEl);
+
+  const circleEl = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+  circleEl.setAttribute('class', 'orbit-circle');
+  circleEl.setAttribute('cx', 0);
+  circleEl.setAttribute('cy', 0);
+  circleEl.setAttribute('r', a);
+  zoom.world.appendChild(circleEl);
+
+      // Draw crosshair at center (zoomFocus in world coords)
+      const cross = (x, y, lenAU=0.04) => {
+        const mk = (x1,y1,x2,y2) => {
+          const l = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+          l.setAttribute('x1', x1); l.setAttribute('y1', y1);
+          l.setAttribute('x2', x2); l.setAttribute('y2', y2);
+          l.setAttribute('class','crosshair');
+          l.setAttribute('stroke-width', 0.003);
+          return l;
+        };
+        zoom.world.appendChild(mk(x - lenAU, y, x + lenAU, y));
+        zoom.world.appendChild(mk(x, y - lenAU, x, y + lenAU));
+      };
+      cross(zoomFocus.x, zoomFocus.y, 0.06/zoomX);
+
+      // Mark points on both curves at ν=π exactly and draw a connector
+  const r_aphe = a*(1 + e);     // ellipse radius at aphelion (used for separation metric)
+      const r_circle = a;           // circle radius
+      const pEllipse = { x: -r_aphe, y: 0 };
+      const pCircle  = { x: -r_circle, y: 0 };
+
+      const mark = (p, color) => {
+        const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        dot.setAttribute('cx', p.x); dot.setAttribute('cy', p.y);
+        dot.setAttribute('r', 0.01);
+        dot.setAttribute('fill', color);
+        dot.setAttribute('stroke', 'rgba(0,0,0,0.3)');
+        dot.setAttribute('stroke-width', 0.002);
+        zoom.world.appendChild(dot);
+      };
+      mark(pEllipse, 'var(--ellipse)');
+      mark(pCircle,  'var(--circle)');
+
+      const connector = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      connector.setAttribute('x1', pCircle.x); connector.setAttribute('y1', pCircle.y);
+      connector.setAttribute('x2', pEllipse.x); connector.setAttribute('y2', pEllipse.y);
+      connector.setAttribute('stroke', '#fff'); connector.setAttribute('stroke-dasharray', '2 3');
+      connector.setAttribute('stroke-width', 0.003);
+      zoom.world.appendChild(connector);
+
+      // Update UI readouts
+      const sepAU = Math.abs(r_aphe - r_circle); // = e * a
+      const sepPx = sepAU * pxPerAU;
+  zoom.zoomXEl.textContent = `${formatZoom(zoomX)}×`;
+      zoom.sepPxEl.textContent = sepPx.toFixed(2);
+
+      console.log("[drawZoom] zoomX =", zoomX.toFixed(3), " sep:", sepAU, "AU =", sepPx.toFixed(2), "px @", pxPerAU.toFixed(2), "px/AU");
+    }
+
+    // Logarithmic mapping utilities for smoother control
+    // Slider domain [0,1000] -> zoomX in [1, 1200]
+    const Z_MIN = 1;
+    const Z_MAX = 1200; // max practical before floating precision issues
+    const SLIDER_MAX = 1000;
+    function sliderToZoom(v){
+      const t = v / SLIDER_MAX; // 0..1
+      // exponential interpolation
+      return Z_MIN * Math.pow(Z_MAX / Z_MIN, t);
+    }
+    function zoomToSlider(z){
+      const t = Math.log(z / Z_MIN) / Math.log(Z_MAX / Z_MIN);
+      return Math.round(t * SLIDER_MAX);
+    }
+    function formatZoom(z){
+      if (z < 10) return z.toFixed(2).replace(/\.00$/,'');
+      if (z < 100) return z.toFixed(1).replace(/\.0$/,'');
+      return Math.round(z).toString();
+    }
+
+    let currentZoom = 1;
+    let rafId = null;
+    function requestDraw(z){
+      currentZoom = Math.min(Z_MAX, Math.max(Z_MIN, z));
+      if (rafId) cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(()=>{
+        drawZoom(currentZoom);
+        updateZoomBox();
+        // keep controls in sync (avoid loop by checking)
+        const sVal = zoomToSlider(currentZoom);
+        if (Number(zoom.slider.value) !== sVal) zoom.slider.value = sVal;
+        if (Number(zoom.input.value) !== Math.round(currentZoom)) zoom.input.value = Math.round(currentZoom);
+      });
+    }
+
+    // Rectangle on main SVG showing region visible in zoom panel.
+    function updateZoomBox(){
+      if(!overlay) return;
+      overlay.innerHTML='';
+      // Dimensions of zoom panel in world AU units at base scale relative to main scale.
+      // The zoom panel shows an area of width/height (in AU) depending on current zoom magnification.
+      const pxPerAUZoom = zoom.pxPerAUBase * currentZoom; // pixels per AU inside zoom view before scaling by currentZoom
+      // Visible AU span in zoom panel horizontally/vertically:
+      const spanX_AU = zoom.width / pxPerAUZoom;
+      const spanY_AU = zoom.height / pxPerAUZoom;
+      // Build rectangle in main SVG coordinate space (world group uses center translation+scale).
+      // We'll construct a rect in screen space via overlay (no scaling) by converting world->screen manually.
+      const toScreen = (p)=>({
+        x: main.center.x + p.x * main.pxPerAU,
+        y: main.center.y - p.y * main.pxPerAU
+      });
+      const halfW = spanX_AU/2;
+      const halfH = spanY_AU/2;
+      const topLeft = toScreen({ x: zoomFocus.x - halfW, y: zoomFocus.y + halfH });
+      const rectWidth = spanX_AU * main.pxPerAU;
+      const rectHeight = spanY_AU * main.pxPerAU;
+      const r = document.createElementNS('http://www.w3.org/2000/svg','rect');
+      r.setAttribute('class','zoom-box');
+      r.setAttribute('x', topLeft.x);
+      r.setAttribute('y', topLeft.y);
+      r.setAttribute('width', rectWidth);
+      r.setAttribute('height', rectHeight);
+      overlay.appendChild(r);
+    }
+
+    // === Facts table ===
+    function populateFacts() {
+      const periAU = a * (1 - e);
+      const apheAU = a * (1 + e);
+      const periKm = periAU * AU_KM;
+      const apheKm = apheAU * AU_KM;
+      const deltaAU = e * a;
+      const deltaKm = deltaAU * AU_KM;
+
+      const rows = [
+        ["Semi-major axis (a)", `${a.toFixed(6)} AU`],
+        ["Eccentricity (e)", `${e}`],
+        ["Semi-minor axis (b = a·√(1−e²))", `${b.toFixed(6)} AU`],
+        ["Focus offset (c = a·e)", `${c.toFixed(6)} AU`],
+        ["Perihelion distance (a·(1−e))", `${periAU.toFixed(6)} AU  &nbsp;≈&nbsp; ${Math.round(periKm).toLocaleString()} km`],
+        ["Aphelion distance (a·(1+e))", `${apheAU.toFixed(6)} AU  &nbsp;≈&nbsp; ${Math.round(apheKm).toLocaleString()} km`],
+        ["Max deviation from 1 AU circle (±e·a)", `±${deltaAU.toFixed(6)} AU  &nbsp;≈&nbsp; ±${Math.round(deltaKm).toLocaleString()} km`],
+      ];
+
+      const tbody = document.getElementById('facts');
+      tbody.innerHTML = rows.map(([k, v]) =>
+        `<tr><td>${k}</td><td>${v}</td></tr>`
+      ).join('');
+      console.log("[facts] populated");
+    }
+
+    // === Wire up ===
+    function init() {
+      populateFacts();
+      drawMain();
+      // Determine aphelion numerically from sampled ellipse (minimum x) for precise leftmost circumference
+      (function setInitialFocus(){
+        const ePts = sampleTrueOrbit(a, e, N);
+        zoomFocus = ePts.reduce((min,p)=> p.x < min.x ? p : min, ePts[0]);
+      })();
+      drawZoom(1);
+      updateZoomBox();
+
+      // Slider (log scale)
+      zoom.slider.addEventListener('input', (e)=>{
+        requestDraw(sliderToZoom(Number(e.target.value)));
+      });
+      // Buttons
+      zoom.btnIn.addEventListener('click', ()=>{ requestDraw(currentZoom * 1.25); });
+      zoom.btnOut.addEventListener('click', ()=>{ requestDraw(currentZoom / 1.25); });
+      // Numeric input
+      zoom.input.addEventListener('change', e=>{
+        const val = Number(e.target.value) || 1;
+        requestDraw(val);
+      });
+      zoom.input.addEventListener('focus', e=> e.target.select());
+      // Keyboard shortcuts when focus on document
+      document.addEventListener('keydown', (e)=>{
+        if (e.key === '+' || e.key === '='){ requestDraw(currentZoom * 1.25); }
+        else if (e.key === '-' || e.key === '_'){ requestDraw(currentZoom / 1.25); }
+      });
+      // Initialize slider pos
+      zoom.slider.value = zoomToSlider(1);
+      zoom.input.value = 1;
+
+      // Interactivity: set zoom focus via click/drag on main SVG
+      let isDragging = false;
+      const startDrag = (evt)=>{
+        isDragging = true;
+        document.body.classList.add('dragging');
+        updateFocus(evt);
+      };
+      const endDrag = ()=>{
+        if(isDragging){ isDragging=false; document.body.classList.remove('dragging'); }
+      };
+      const updateFocus = (evt)=>{
+        const w = screenToWorld(main.svg, evt);
+        zoomFocus.x = w.x; zoomFocus.y = w.y;
+        requestDraw(currentZoom); // will also update box
+      };
+      main.svg.addEventListener('mousedown', startDrag);
+      main.svg.addEventListener('touchstart', e=>{ if(e.touches.length) startDrag(e.touches[0]); }, {passive:true});
+      window.addEventListener('mousemove', e=>{ if(isDragging) updateFocus(e); });
+      window.addEventListener('touchmove', e=>{ if(isDragging && e.touches.length) updateFocus(e.touches[0]); }, {passive:true});
+      window.addEventListener('mouseup', endDrag);
+      window.addEventListener('touchend', endDrag);
+      // Single click without drag
+      main.svg.addEventListener('click', e=>{ if(!isDragging) updateFocus(e); });
+
+      // Accessibility live region update (optional)
+      zoom.zoomXEl.setAttribute('aria-live','polite');
+      console.log("[init] ready");
+    }
+
+    init();
+  </script>
+</body>
+</html>
