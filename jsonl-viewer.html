@@ -368,6 +368,22 @@
     .faded {
       color: #4b5563;
     }
+
+    /* Log level palette + chip styles */
+    .legend { display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap; }
+    .legend-item { display:flex; align-items:center; gap:0.35rem; font-size:0.72rem; color:#9ca3af; }
+    .chip { display:inline-flex; align-items:center; justify-content:center; min-width: 2.1rem; height: 1.15rem; padding: 0 0.4rem; border-radius: 9999px; font-size: 0.68rem; font-weight: 600; letter-spacing: 0.02em; border: 1px solid transparent; }
+    .chip.debug { color:#8ab4f8; background: rgba(30,64,175,0.18); border-color: rgba(30,64,175,0.35); }
+    .chip.info { color:#7dd3fc; background: rgba(2,132,199,0.18); border-color: rgba(2,132,199,0.35); }
+    .chip.notice { color:#a7f3d0; background: rgba(16,185,129,0.18); border-color: rgba(16,185,129,0.35); }
+    .chip.warn { color:#fcd34d; background: rgba(234,179,8,0.18); border-color: rgba(234,179,8,0.35); }
+    .chip.error { color:#fca5a5; background: rgba(239,68,68,0.18); border-color: rgba(239,68,68,0.35); }
+    .chip.critical { color:#fda4af; background: rgba(244,63,94,0.20); border-color: rgba(244,63,94,0.40); }
+    .chip.fatal { color:#fecaca; background: rgba(220,38,38,0.22); border-color: rgba(220,38,38,0.45); }
+    .chip.trace { color:#c4b5fd; background: rgba(99,102,241,0.18); border-color: rgba(99,102,241,0.35); }
+    .chip.silent { color:#9ca3af; background: rgba(75,85,99,0.15); border-color: rgba(75,85,99,0.3); }
+    .log-item { flex-direction: row; align-items: center; gap: 0.5rem; }
+    .log-item-title { flex: 1; }
   </style>
 </head>
 <body>
@@ -380,6 +396,16 @@
       </div>
       <button id="folder-button" type="button" class="badge">Load folder…</button>
       <input type="file" id="folder-input" webkitdirectory multiple style="display:none" accept=".jsonl,.log,.txt,application/jsonl" />
+    </div>
+    <div class="legend" title="Log level legend">
+      <div class="legend-item"><span class="chip trace">TRACE</span><span>Very verbose</span></div>
+      <div class="legend-item"><span class="chip debug">DEBUG</span><span>Debugging info</span></div>
+      <div class="legend-item"><span class="chip info">INFO</span><span>General info</span></div>
+      <div class="legend-item"><span class="chip notice">NOTICE</span><span>Notable events</span></div>
+      <div class="legend-item"><span class="chip warn">WARN</span><span>Potential issues</span></div>
+      <div class="legend-item"><span class="chip error">ERROR</span><span>Errors</span></div>
+      <div class="legend-item"><span class="chip critical">CRIT</span><span>Critical</span></div>
+      <div class="legend-item"><span class="chip fatal">FATAL</span><span>Unrecoverable</span></div>
     </div>
   </header>
 
@@ -577,6 +603,12 @@
         const li = document.createElement('li');
         li.className = 'log-item';
         li.dataset.index = String(index);
+        // Level chip mapping
+        const levelInfo = getLevelInfo(entry);
+        const chip = document.createElement('span');
+        chip.className = 'chip ' + levelInfo.className;
+        chip.textContent = levelInfo.label;
+        li.appendChild(chip);
 
         const title = document.createElement('div');
         title.className = 'log-item-title';
@@ -615,6 +647,48 @@
         });
 
         return li;
+      }
+
+      // Normalize level to a label + class for coloring
+      function getLevelInfo(entry) {
+        console.log("[JSONL Viewer] Inferring log level for entry", entry);
+        let raw = null;
+        if (entry && typeof entry === 'object') {
+          raw = entry.level ?? entry.severity ?? entry.lvl ?? entry.priority ?? entry.log_level ?? null;
+        }
+        console.log("[JSONL Viewer] Raw level value:", raw);
+        let label = 'INFO';
+        let cls = 'info';
+        if (raw != null) {
+          const s = String(raw).toLowerCase();
+          // Named levels
+          if (/(trace)/.test(s)) { label = 'TRACE'; cls = 'trace'; }
+          else if (/(debug|dbg)/.test(s)) { label = 'DEBUG'; cls = 'debug'; }
+          else if (/(info|information)/.test(s)) { label = 'INFO'; cls = 'info'; }
+          else if (/(notice)/.test(s)) { label = 'NOTICE'; cls = 'notice'; }
+          else if (/(warn|warning)/.test(s)) { label = 'WARN'; cls = 'warn'; }
+          else if (/(error|err)/.test(s)) { label = 'ERROR'; cls = 'error'; }
+          else if (/(crit|critical)/.test(s)) { label = 'CRIT'; cls = 'critical'; }
+          else if (/(fatal)/.test(s)) { label = 'FATAL'; cls = 'fatal'; }
+          else {
+            // Numeric mapping (common schemes): lower = verbose, higher = severe
+            const n = Number(s);
+            if (Number.isFinite(n)) {
+              if (n <= 5) { label = 'TRACE'; cls = 'trace'; }
+              else if (n <= 10) { label = 'DEBUG'; cls = 'debug'; }
+              else if (n <= 20) { label = 'INFO'; cls = 'info'; }
+              else if (n <= 25) { label = 'NOTICE'; cls = 'notice'; }
+              else if (n <= 30) { label = 'WARN'; cls = 'warn'; }
+              else if (n <= 40) { label = 'ERROR'; cls = 'error'; }
+              else if (n <= 50) { label = 'CRIT'; cls = 'critical'; }
+              else { label = 'FATAL'; cls = 'fatal'; }
+            } else {
+              label = String(raw).toUpperCase().slice(0, 5);
+              cls = 'silent';
+            }
+          }
+        }
+        return { label, className: cls };
       }
 
       function renderList() {
@@ -857,11 +931,15 @@
 
         console.log('[JSONL Viewer] Loading', files.length, 'file(s)');
 
+        // Reset UI state so new loads don't require refresh
         logs = [];
         filteredLogs = [];
         filterQuery = '';
         logFilter.value = '';
         fileIndex = [];
+        currentFilePath = null;
+        logList.innerHTML = '';
+        treeRoot.innerHTML = '';
 
         const allEntries = [];
         const allErrors = [];
@@ -886,8 +964,19 @@
 
         logs = allEntries;
         buildTree(fileIndex);
-        currentFilePath = null;
+        // Auto-select single dropped/loaded file in left view
+        if (files.length === 1) {
+          const onlyPath = files[0].webkitRelativePath || files[0].name;
+          currentFilePath = onlyPath;
+        } else {
+          currentFilePath = null;
+        }
         renderList();
+        if (currentFilePath) {
+          // Show logs for the selected file and select first entry
+          filteredLogs = logs.filter((en) => en && en.__sourcePath === currentFilePath);
+          if (filteredLogs.length) selectLog(0);
+        }
 
         if (logs.length === 0) {
           detailTitle.textContent = 'No log entries found';
@@ -1053,14 +1142,17 @@
           row.style.display = 'flex';
           row.style.alignItems = 'center';
           row.style.gap = '0.4rem';
+          // Count on far left
+          const countBadge = document.createElement('span');
+          countBadge.className = 'badge';
+          countBadge.style.order = '0';
+          const c = counts[path] || 0;
+          countBadge.textContent = String(c);
+
           const nameEl = document.createElement('span');
           nameEl.textContent = path.split('/').pop();
           nameEl.style.color = '#e5e7eb';
           nameEl.style.cursor = 'pointer';
-          const countBadge = document.createElement('span');
-          countBadge.className = 'badge';
-          const c = counts[path] || 0;
-          countBadge.textContent = c + (c === 1 ? ' entry' : ' entries');
 
           // Clicking filename loads just that file into flat list for selection
           nameEl.addEventListener('click', (e) => {
@@ -1073,8 +1165,8 @@
             if (filteredLogs.length) selectLog(0);
           });
 
-          row.appendChild(nameEl);
           row.appendChild(countBadge);
+          row.appendChild(nameEl);
           li.appendChild(row);
           return li;
         }
